@@ -1,0 +1,45 @@
+module src/test/stream_input_test
+
+import test
+import src/lib/stream_input
+import src/lib/event
+import src/test/lib
+import io/error
+import list
+import process
+import io/filesystem
+
+/// The content of the test_events.csv as a list of doubles for comparison
+def csvContentAsList(): List[Double] = {
+  [10.0, 27.0, 5.5, 42.0, 14.5, 29.0, 20.0]
+}
+
+def testSuite() = suite("stream_input_csv") {
+  test("reads csv events push") {
+    with assertDoNotRaise[WrongFormat]
+    with assertDoNotRaise[IOError]
+    assertEmits[Double](csvContentAsList()) { (a: Double, b: Double) => a == b } {
+      stream_input::csvFeed("src/test/testdata.csv", "value", 0)
+    }
+  }
+
+  // test("raises IOError on missing file") {
+  //   with assertDoRaise[IOError]
+  //   with assertDoNotRaise[WrongFormat]
+  //   assertEmits[Double]([]) { (a: Double, b: Double) => a == b } {
+  //     stream_input::csvFeed("src/test/data/missing_file.csv", "value", 0)
+  //   }
+  // }
+  
+  // test("read non existing file") {
+  //   assertDoRaise[IOError] {
+  //     readFile("non_existing_file") // should raise IOError but backend error occurs
+  //     ()
+  //   }
+  // }
+}
+
+def main() = {
+  process::exit(if (testSuite()) 0 else 1)
+  ()
+}

@@ -4,6 +4,7 @@ import test
 import src/lib/anomaly_detection
 import src/lib/event
 import src/test/lib
+import process
 
 def eventsFromList(values: List[Double]): List[Event] = {
 	def loop(vals: List[Double], ts: Int): List[Event] = {
@@ -114,4 +115,9 @@ def testSuite() = suite("anomaly_detection") {
 			anomaly_detection::zScoreAnomalyDetector(1.0)
 		}
 	}
+}
+
+def main() = {
+  process::exit(if (testSuite()) 0 else 1)
+  ()
 }

@@ -67,7 +67,7 @@ type CsvValue = List[CsvRow]
 def build[R] { body: => R / CsvBuilder }: (R, CsvValue) = {
   var csvrows: List[CsvRow] = []
   val r: R = try body() with CsvBuilder {
-    def rows() = resume { {row} =>
+    def rows[R]() = resume { {row} =>
       val (ret, csvrow) = buildRow {row}
       csvrows = Cons(csvrow, csvrows)
       ret
@@ -122,7 +122,7 @@ def readQuotedString(): Unit / { Scan[Char], emit[Char], Exception[WrongFormat] 
   }
 }
 
-def decodeRow(): Unit / {Scan[Char], RowBuilder, Exception[WrongFormat]} = exhaustively {
+def decodeRow(): Unit / {Scan[Char], RowBuilder, Exception[WrongFormat]} = loop {
   val cell = readUntil { c => c == ',' || c == '\n' || c == '"' }
   do cell(cell)
 
@@ -138,7 +138,7 @@ def decodeRow(): Unit / {Scan[Char], RowBuilder, Exception[WrongFormat]} = exhau
   }
 }
 
-def decodeCsv(): Unit / {Scan[Char], CsvBuilder, Exception[WrongFormat]} = exhaustively {
+def decodeCsv(): Unit / {Scan[Char], CsvBuilder, Exception[WrongFormat]} = loop {
   do peek[Char]() match {
     case '\n' => 
       // do skip[Char]()
@@ -158,7 +158,7 @@ def encodeCsv[R] { csv: => R / CsvBuilder }: R / emit[String] = {
   }
 
   try csv() with CsvBuilder {
-    def rows() = resume { {row} => 
+    def rows[R]() = resume { {row} => 
       sep(); encodeRow {row}
     }
   }
@@ -182,7 +182,7 @@ def validate[R] { csv: => R / CsvBuilder }: R / Exception[WrongFormat] = {
   var rowNumber = 0
 
   try csv() with CsvBuilder {
-    def rows() = resume { {r} =>
+    def rows[R]() = resume { {r} =>
       rowNumber = rowNumber + 1
 
       var cells = 0
@@ -214,7 +214,7 @@ def validate[R] { csv: => R / CsvBuilder }: R / Exception[WrongFormat] = {
 def getColumnOf[R](columnName: String) { csv: => R / CsvBuilder }: R / {emit[String], Exception[WrongFormat]} = {
   var columnId = None()
   try csv() with CsvBuilder {
-    def rows() = resume { {r} =>
+    def rows[R]() = resume { {r} =>
       var currentColumn = 0
       val ret = try r() with RowBuilder {
         def cell(s) = {
