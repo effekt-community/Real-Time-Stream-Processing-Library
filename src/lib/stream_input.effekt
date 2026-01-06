@@ -1,0 +1,117 @@
+module src/lib/stream_input
+
+import stream
+import src/lib/csv
+import queue
+import scanner
+import io/error
+import io/filesystem
+import io/time
+
+def pushToPullStream[T] {pushStr: () => Unit / { emit[T], stop } } {pullStr: () => Unit / { read[T] } } = {
+  def q = emptyQueue[T]()
+  var running = true
+  try pushStr() with emit[T] {
+    def emit(v: T) = {
+      q.pushBack(v)
+      resume(())
+    }
+  } with stop {
+    running = false
+  }
+  try pullStr() with read[T] {
+    while (running) {
+      val v = q.popFront()
+      v match {
+        case Some(value) => {resume { unbox value }}
+        case None() => {}
+      }
+    }
+    resume { do stop() }
+  }
+}
+
+/// Parse string to double (not in standard library???)
+extern def toDouble(s: String) at {}: Double =
+  js "parseFloat(${s})"
+
+def csvFeed(path: String, columnName: String, delayMs: Int): Unit / { emit[Double], Exception[IOError], Exception[WrongFormat] } = {
+  readFileUTF8(path) {
+    returning::scanner[Char, Unit] {
+      try {
+        getColumnOf(columnName) {
+          decodeCsv()
+        }
+      } with emit[String] { s =>
+        do emit(s.toDouble)
+        time::sleep(delayMs)
+        resume(())
+      }
+    }
+  }
+}
+
+def csvFeedStr(csvStr: String, columnName: String, delayMs: Int): Unit / { emit[Double], Exception[WrongFormat] } = {
+  feed(csvStr) {
+    returning::scanner[Char, Unit] {
+      try {
+        getColumnOf(columnName) {
+          decodeCsv()
+        }
+      } with emit[String] { s =>
+        do emit(s.toDouble)
+        time::sleep(delayMs)
+        resume(())
+      }
+    }
+  }
+}
+
+def csvFeedPull(path: String, columnName: String, delayMs: Int) {body: () => Unit / { read[Double], Exception[IOError], Exception[WrongFormat] } }: Unit / { Exception[IOError], Exception[WrongFormat] } = {
+  pushToPullStream[Double] { csvFeed(path, columnName, delayMs) } { body() }
+}
+
+def csvFeedStrPull(csvStr: String, columnName: String, delayMs: Int) {body: () => Unit / { read[Double], Exception[WrongFormat] } }: Unit / { Exception[WrongFormat] } = {
+  pushToPullStream[Double] { csvFeedStr(csvStr, columnName, delayMs) } { body() }
+}
+
+
+namespace examples {
+  def example1(): Unit = {
+    with on[WrongFormat].panic()
+
+    val csv = "name,age\nJohn,42\nJoe,10\nJolene,27"
+
+    try csvFeedStr(csv, "age", 500) with emit[Double] { v =>
+      println("Received value: " ++ v.show())
+      resume(())
+    }
+  }
+
+  def example2(): Unit = {
+    with on[IOError].panic()
+    with on[WrongFormat].panic()
+
+    try csvFeed("src/test/testdata.csv", "value", 500) with emit[Double] { v =>
+      println("Received value: " ++ v.show())
+      resume(())
+    }
+  }
+
+  def example3(): Unit = {
+    with on[IOError].panic()
+    with on[WrongFormat].panic()
+    with boundary
+    csvFeedPull("src/test/testdata.csv", "value", 500) { 
+      while (true) {
+        println("Waiting to read value...")
+        val v = do read[Double]()
+        println("Received value: " ++ v.show())
+      }
+    }
+  }
+
+  def main(): Unit = {
+    example2()
+  }
+}

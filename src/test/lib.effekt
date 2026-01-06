@@ -15,7 +15,9 @@ def assertEmits[T](expected: List[T]) { equals: (T, T) => Bool } { program: () =
         assertTrue(equals(head, v), "Emitted value did not match expected value")
         lst = tail
     }
+    resume(())
   }
+  assertTrue(lst.isEmpty(), "Did not emit all expected values")
 }
 
 def assertNoEmits[T] { program: () => Unit / emit[T] } : Unit / { Assertion } = {
@@ -31,17 +33,40 @@ def assertReads[T](inputs: List[T]) { equals: (T, T) => Bool } { program: () => 
   var lst = inputs
   assertFalse(lst.isEmpty(), "assertReads requires a non empty list of inputs")
   val someValue: T = lst.head() // dummy value to return when we run out of inputs (not used because of the failing assert but necessary for type checking)
+  var isStop: Bool = false
   try {
     program()
   } with read[T] { () =>
-    val r: T = lst match {
+    lst match {
       case Nil() =>
-        assertTrue(false, "Read more values than expected")
-        someValue // to satisfy type checker
+        if (isStop) {
+          assertTrue(false, "Read more values than expected (stop already signaled)")
+        } else {
+          isStop = true
+          resume { do stop() }
+        }
       case Cons(head, tail) =>
         lst = tail
-        unbox head
+        resume { unbox head }
     }
-    resume { unbox r }
+  }
+}
+
+def assertDoRaise[E] {block: () => Unit / Exception[E]} = {
+  try {
+    block()
+    assertTrue(false, "Expected exception was not raised")
+  } with Exception[E] {
+    def raise(e: E, msg: String) = {
+    }
+  }
+}
+def assertDoNotRaise[E] {block: () => Unit / Exception[E]} = {
+  try {
+    block()
+  } with Exception[E] {
+    def raise(e: E, msg: String) = {
+      assertTrue(false, "Expected exception not to raise but was raised")
+    }
   }
 }
