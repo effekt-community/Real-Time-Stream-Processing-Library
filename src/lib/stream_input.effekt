@@ -2,18 +2,22 @@ module src/lib/stream_input
 
 import stream
 import src/lib/csv
-import queue
+import src/lib/queue
 import scanner
 import io/error
 import io/filesystem
 import io/time
 
-def pushToPullStream[T] {pushStr: () => Unit / { emit[T], stop } } {pullStr: () => Unit / { read[T] } } = {
+/// Connect a push-based stream to a pull-based stream using an internal queue which slows emits down when reaching the maximum size.
+def pushToPullStream[T](maxQueueSize: Int) {pushStr: () => Unit / { emit[T], stop } } {pullStr: () => Unit / { read[T] } } = {
   def q = emptyQueue[T]()
   var running = true
   try pushStr() with emit[T] {
     def emit(v: T) = {
       q.pushBack(v)
+      while (q.size() >= maxQueueSize) {
+        time::sleep(10)
+      }
       resume(())
     }
   } with stop {
@@ -68,11 +72,11 @@ def csvFeedStr(csvStr: String, columnName: String, delayMs: Int): Unit / { emit[
 }
 
 def csvFeedPull(path: String, columnName: String, delayMs: Int) {body: () => Unit / { read[Double], Exception[IOError], Exception[WrongFormat] } }: Unit / { Exception[IOError], Exception[WrongFormat] } = {
-  pushToPullStream[Double] { csvFeed(path, columnName, delayMs) } { body() }
+  pushToPullStream[Double](100) { csvFeed(path, columnName, delayMs) } { body() }
 }
 
 def csvFeedStrPull(csvStr: String, columnName: String, delayMs: Int) {body: () => Unit / { read[Double], Exception[WrongFormat] } }: Unit / { Exception[WrongFormat] } = {
-  pushToPullStream[Double] { csvFeedStr(csvStr, columnName, delayMs) } { body() }
+  pushToPullStream[Double](100) { csvFeedStr(csvStr, columnName, delayMs) } { body() }
 }
 
 
