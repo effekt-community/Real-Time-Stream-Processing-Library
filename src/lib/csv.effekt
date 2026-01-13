@@ -21,7 +21,8 @@ import string
 --- The following part is written by myself ---
 -----------------------------------------------
 */
-
+extern def trim(s: String) at {}: String =
+  js "${s}.trim()"
 
 def collectList[T, R]{ body: => R / { emit[T] } }: (R, List[T]) = {
   var lst: List[T] = Nil()
@@ -219,7 +220,7 @@ def getColumnOf[R](columnName: String) { csv: => R / CsvBuilder }: R / {emit[Str
       val ret = try r() with RowBuilder {
         def cell(s) = {
           currentColumn = currentColumn + 1
-          if (columnId is None() and s == columnName) {
+          if (columnId is None() and s.trim() == columnName.trim()) {
             columnId = Some(currentColumn)
           } else if (columnId is Some(c) and c == currentColumn) {
             do emit(s)

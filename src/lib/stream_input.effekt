@@ -79,6 +79,24 @@ def csvFeedStrPull(csvStr: String, columnName: String, delayMs: Int) {body: () =
   pushToPullStream[Double](100) { csvFeedStr(csvStr, columnName, delayMs) } { body() }
 }
 
+def normalDistributedPull(mu: Double, sigma: Double) {body: () => Unit / { read[Double] } }: Unit / { } = {
+  try body() with read[Double] {
+    resume { internal::generateNormalDistributedValue(mu, sigma) }
+  }
+}
+
+def exponentialDistributedPull(lambda: Double) {body: () => Unit / { read[Double] } }: Unit / { } = {
+  try body() with read[Double] {
+    resume { internal::generateExponentialDistributedValue(lambda) }
+  }
+}
+
+def uniformDistributedPull(a: Double, b: Double) {body: () => Unit / { read[Double] } }: Unit / { } = {
+  try body() with read[Double] {
+    resume { internal::generateUniformDistributedValue(a, b) }
+  }
+}
+
 
 namespace examples {
   def example1(): Unit = {
@@ -115,7 +133,51 @@ namespace examples {
     }
   }
 
+  def example4(): Unit = {
+    normalDistributedPull(0.0, 1.0) {
+      effekt::each(1, 11) { (n) =>
+        try {
+          val v = do read[Double]()
+          println("Normal distributed value: " ++ v.show())
+        } with stop {
+          println("This should never be called since the stream is infinite.")
+        }
+      }
+    }
+  }
+
+
   def main(): Unit = {
     example2()
+  }
+}
+
+
+namespace internal {
+  def generateNormalDistributedValue(mu: Double, sigma: Double): Double = {
+    var z = 0.0
+    loop { {l} =>
+      val u1 = random()
+      val u2 = random()
+      val v1 = 2.0 * u1 - 1.0
+      val v2 = 2.0 * u2 - 1.0
+      val w = v1 * v1 + v2 * v2
+      if (w < 1.0) {
+        val y = sqrt((-2.0 * log(w)) / w)
+        z = v1 * y
+        l.break()
+      }
+    }
+    return mu + z * sigma
+  }
+
+  def generateExponentialDistributedValue(lambda: Double): Double = {
+    val u = random()
+    return (-1.0 / lambda) * log(u)
+  }
+
+  def generateUniformDistributedValue(a: Double, b: Double): Double = {
+    val u = random()
+    return a + (b - a) * u
   }
 }
