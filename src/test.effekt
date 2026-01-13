@@ -10,7 +10,7 @@ def main() = {
   val testResults = [
     aggregation_test::testSuite(),
     anomaly_detection_test::testSuite(),
-    // stream_input_test::testSuite()
+    stream_input_test::testSuite()
   ]
   val allPassed = testResults.all { res => res }
   val exitCode = if (allPassed) 0 else 1

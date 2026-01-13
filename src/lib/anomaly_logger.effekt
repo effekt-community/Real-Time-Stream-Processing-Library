@@ -1,0 +1,267 @@
+module src/lib/anomaly_logger
+
+import src/lib/anomaly_detection
+import src/lib/event
+import src/lib/csv
+import io/error
+import io/filesystem
+
+/// An AnomalyDetection handler that logs only anomalies to the console
+def logAnomaliesToConsole() {body: () => Unit / AnomalyDetection}: Unit = {
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      println("Anomaly detected: " ++ ae.event.value.show() ++ " at t=" ++ ae.event.timestamp.show() ++
+              " (score: " ++ ae.anomalyScore.show() ++ ")")
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      resume(())
+    }
+  }
+}
+
+/// An AnomalyDetection handler that logs only anomalies to the console and rethrows the events to the caller
+def logAnomaliesToConsoleRethrow() {body: () => Unit / AnomalyDetection}: Unit / AnomalyDetection = {
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      println("Anomaly detected: " ++ ae.event.value.show() ++ " at t=" ++ ae.event.timestamp.show() ++
+              " (score: " ++ ae.anomalyScore.show() ++ ")")
+      do anomaly(ae)
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      do noAnomaly(ae)
+      resume(())
+    }
+  }
+}
+
+/// An AnomalyDetection handler that logs all events to the console
+def logToConsole() {body: () => Unit / AnomalyDetection}: Unit = {
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      println("Anomaly detected: " ++ ae.event.value.show() ++ " at t=" ++ ae.event.timestamp.show() ++
+              " (score: " ++ ae.anomalyScore.show() ++ ")")
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      println("No anomaly: " ++ ae.event.value.show() ++ " at t=" ++ ae.event.timestamp.show() ++
+              " (score: " ++ ae.anomalyScore.show() ++ ")")
+      resume(())
+    }
+  }
+}
+
+/// An AnomalyDetection handler that logs all events to the console and rethrows the events to the caller
+def logToConsoleRethrow() {body: () => Unit / AnomalyDetection}: Unit / AnomalyDetection = {
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      println("Anomaly detected: " ++ ae.event.value.show() ++ " at t=" ++ ae.event.timestamp.show() ++
+              " (score: " ++ ae.anomalyScore.show() ++ ")")
+      do anomaly(ae)
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      println("No anomaly: " ++ ae.event.value.show() ++ " at t=" ++ ae.event.timestamp.show() ++
+              " (score: " ++ ae.anomalyScore.show() ++ ")")
+      do noAnomaly(ae)
+      resume(())
+    }
+  }
+}
+
+/// An AnomalyDetection handler that logs all events to a CSV file
+def logToFileCsv(filePath: String) {body: () => Unit / AnomalyDetection}: Unit / Exception[IOError] = {
+  var buffer: List[CsvRow] = [["timestamp", "value", "isAnomaly", "anomalyScore"]]
+  var first = true
+  val maxBufferSize = 1000
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      val row: CsvRow = [
+        ae.event.timestamp.show(),
+        ae.event.value.show(),
+        "true",
+        ae.anomalyScore.show()
+      ]
+      buffer = Cons(row, buffer)
+      if (buffer.size >= maxBufferSize) {
+        // Flush buffer to file
+        internal::saveCsvRows(buffer.reverse, filePath, first)
+        buffer = []
+        first = false
+      }
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      val row: CsvRow = [
+        ae.event.timestamp.show(),
+        ae.event.value.show(),
+        "false",
+        ae.anomalyScore.show()
+      ]
+      buffer = Cons(row, buffer)
+      if (buffer.size >= maxBufferSize) {
+        // Flush buffer to file
+        internal::saveCsvRows(buffer.reverse, filePath, first)
+        buffer = []
+        first = false
+      }
+      resume(())
+    }
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
+/// An AnomalyDetection handler that logs only anomalies to a CSV file
+def logAnomaliesToFileCsv(filePath: String) {body: () => Unit / AnomalyDetection}: Unit / Exception[IOError] = {
+  var buffer: List[CsvRow] = [["timestamp", "value", "isAnomaly", "anomalyScore"]]
+  var first = true
+  val maxBufferSize = 1000
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      val row: CsvRow = [
+        ae.event.timestamp.show(),
+        ae.event.value.show(),
+        "true",
+        ae.anomalyScore.show()
+      ]
+      buffer = Cons(row, buffer)
+      if (buffer.size >= maxBufferSize) {
+        // Flush buffer to file
+        internal::saveCsvRows(buffer.reverse, filePath, first)
+        buffer = []
+        first = false
+      }
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      resume(())
+    }
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
+
+namespace examples {
+  def example1(): Unit = {
+    with on[MissingValue].panic()
+    with logAnomaliesToConsole()
+    var lst: List[Event] = [
+      Event(1, 1.0),
+      Event(2, 3.0),
+      Event(3, 6.0),
+      Event(4, 0.5),
+      Event(5, 4.0),
+      Event(6, -1.0),
+      Event(7, 3.0)
+    ]
+    try {
+      minMaxAnomalyDetector(0.0, 5.0)
+    } with read[Event] { () =>
+      if (lst.isEmpty()) {
+        println("No more values to read, stopping...")
+        resume { do stop() }
+      } else {
+        val first = lst.head()
+        lst = lst.deleteAt(0)
+        println("Providing value: " ++ first.value.show())
+        resume { unbox first }
+      }
+    }
+  }
+
+  def example2(): Unit = {
+    with on[MissingValue].panic()
+    with logToConsole()
+    var lst: List[Event] = [
+      Event(1, 1.0),
+      Event(2, 3.0),
+      Event(3, 6.0),
+      Event(4, 0.5),
+      Event(5, 4.0),
+      Event(6, -1.0),
+      Event(7, 3.0)
+    ]
+    try {
+      zScoreAnomalyDetector(1.0)
+    } with read[Event] { () =>
+      if (lst.isEmpty()) {
+        println("No more values to read, stopping...")
+        resume { do stop() }
+      } else {
+        val first = lst.head()
+        lst = lst.deleteAt(0)
+        println("Providing value: " ++ first.value.show())
+        resume { unbox first }
+      }
+    }
+  }
+
+  /// Note: This will create (or overwrite) a file "anomalies_example_log.csv" in the current working directory
+  def example3(): Unit = {
+    with on[MissingValue].panic()
+    with on[IOError].panic()
+    with logToFileCsv("anomalies_example_log.csv")
+    with logToConsoleRethrow()
+    var lst: List[Event] = [
+      Event(1, 1.0),
+      Event(2, 3.0),
+      Event(3, 6.0),
+      Event(4, 0.5),
+      Event(5, 4.0),
+      Event(6, -1.0),
+      Event(7, 3.0)
+    ]
+    try {
+      zScoreAnomalyDetector(1.0)
+    } with read[Event] { () =>
+      if (lst.isEmpty()) {
+        println("No more values to read, stopping...")
+        resume { do stop() }
+      } else {
+        val first = lst.head()
+        lst = lst.deleteAt(0)
+        println("Providing value: " ++ first.value.show())
+        resume { unbox first }
+      }
+    }
+  }
+}
+
+def main(): Unit = {
+  examples::example3()
+  ()
+}
+
+namespace internal {
+  def saveCsvRows(rows: List[CsvRow], filePath: String, first: Bool): Unit / Exception[IOError] = {
+    val line: String = collectList[String] {
+      encodeCsv {
+        unbuild(rows)
+      }
+    }.join("") ++ "\n"
+    if (first) {
+      writeFile(filePath, line)
+    } else {
+      appendFile(filePath, line)
+    }
+  }
+}
