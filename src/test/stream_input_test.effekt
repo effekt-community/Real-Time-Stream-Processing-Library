@@ -23,20 +23,117 @@ def testSuite() = suite("stream_input_csv") {
     }
   }
 
-  // test("raises IOError on missing file") {
-  //   with assertDoRaise[IOError]
-  //   with assertDoNotRaise[WrongFormat]
-  //   assertEmits[Double]([]) { (a: Double, b: Double) => a == b } {
-  //     stream_input::csvFeed("src/test/data/missing_file.csv", "value", 0)
-  //   }
-  // }
+  test("raises IOError on missing file") {
+    with assertDoRaise[IOError]
+    with assertDoNotRaise[WrongFormat]
+    assertEmits[Double]([]) { (a: Double, b: Double) => a == b } {
+      stream_input::csvFeed("missing_file.csv", "value", 0)
+    }
+  }
   
-  // test("read non existing file") {
-  //   assertDoRaise[IOError] {
-  //     readFile("non_existing_file") // should raise IOError but backend error occurs
-  //     ()
-  //   }
-  // }
+  test("read non existing file") {
+    assertDoRaise[IOError] {
+      readFile("non_existing_file") // should raise IOError but backend error occurs
+      ()
+    }
+  }
+
+
+  // ----------------------------------------------------------------------------------------------------------
+  // The following tests are statistical and may fail occasionally due to randomness (intentional flaky tests!)
+  // When the test fails, it is an indication that there may be an issue with the distribution generator
+  // ----------------------------------------------------------------------------------------------------------
+
+  test("read normal distributed values") {
+    val mu = 0.0
+    val sigma = 1.0
+    val numSamples = 100000
+    val acceptedOutliers = 100 // Allow some outliers due to randomness
+    var samplesRead = 0
+    var samplesOutliers = 0
+    var sampleSum = 0.0
+    var sampleSumSq = 0.0
+
+    normalDistributedPull(mu, sigma) {
+      while (samplesRead < numSamples) {
+        try {
+          val v = do read[Double]()
+          // Check that the value is within a reasonable range (e.g., within 5 standard deviations)
+          if (not(v >= mu - 5.0 * sigma && v <= mu + 5.0 * sigma))
+            samplesOutliers = samplesOutliers + 1
+          samplesRead = samplesRead + 1
+          sampleSum = sampleSum + v
+          sampleSumSq = sampleSumSq + v * v
+        } with stop {
+          assertTrue(false, "Infinite stream stopped unexpectedly")
+        }
+      }
+    }
+    assertTrue(samplesOutliers <= acceptedOutliers, "Statistical test failed: too many outliers. This may indicate an issue with the normal distribution generator but could also be due to random chance.")
+    val sampleMean = sampleSum / toDouble(numSamples)
+    val sampleVariance = (sampleSumSq / toDouble(numSamples)) - (sampleMean * sampleMean)
+    val sampleStdDev = sqrt(sampleVariance)
+    assertTrue(abs(sampleMean - mu) < 0.2, "Statistical test failed: sample mean deviates significantly from expected mean. This may indicate an issue with the normal distribution generator but could also be due to random chance.")
+    assertTrue(abs(sampleStdDev - sigma) < 0.2, "Statistical test failed: sample standard deviation deviates significantly from expected standard deviation. This may indicate an issue with the normal distribution generator but could also be due to random chance.")
+  }
+
+  test("read exponential distributed values") {
+    val lambda = 1.0
+    val numSamples = 100000
+    val acceptedOutliers = 100 // Allow some outliers due to randomness
+    var samplesRead = 0
+    var samplesOutliers = 0
+    var sampleSum = 0.0
+
+    exponentialDistributedPull(lambda) {
+      while (samplesRead < numSamples) {
+        try {
+          val v = do read[Double]()
+
+          assertTrue(v >= 0.0, "Exponential distributed value should be non-negative")
+          if (v > 10.0 / lambda)
+            samplesOutliers = samplesOutliers + 1
+          samplesRead = samplesRead + 1
+          sampleSum = sampleSum + v
+        } with stop {
+          assertTrue(false, "Infinite stream stopped unexpectedly")
+        }
+      }
+    }
+    assertTrue(samplesOutliers <= acceptedOutliers, "Statistical test failed: too many outliers. This may indicate an issue with the exponential distribution generator but could also be due to random chance.")
+    val sampleMean = sampleSum / toDouble(numSamples)
+    val expectedMean = 1.0 / lambda
+    assertTrue(abs(sampleMean - expectedMean) < 0.2, "Statistical test failed: sample mean deviates significantly from expected mean. This may indicate an issue with the exponential distribution generator but could also be due to random chance.")
+  }
+
+  test("read uniform distributed values") {
+    val a = -5.0
+    val b = 5.0
+    val numSamples = 100000
+    val acceptedOutliers = 100 // Allow some outliers due to randomness
+    var samplesRead = 0
+    var samplesOutliers = 0
+    var sampleSum = 0.0
+
+    uniformDistributedPull(a, b) {
+      while (samplesRead < numSamples) {
+        try {
+          val v = do read[Double]()
+
+          if (v < a || v > b)
+            samplesOutliers = samplesOutliers + 1
+          samplesRead = samplesRead + 1
+          sampleSum = sampleSum + v
+        } with stop {
+          assertTrue(false, "Infinite stream stopped unexpectedly")
+        }
+      }
+    }
+    assertTrue(samplesOutliers <= acceptedOutliers, "Statistical test failed: too many outliers. This may indicate an issue with the uniform distribution generator but could also be due to random chance.")
+    val sampleMean = sampleSum / toDouble(numSamples)
+    val expectedMean = (a + b) / 2.0
+    assertTrue(abs(sampleMean - expectedMean) < 0.2, "Statistical test failed: sample mean deviates significantly from expected mean. This may indicate an issue with the uniform distribution generator but could also be due to random chance.")
+  }
 }
 
 def main() = {
