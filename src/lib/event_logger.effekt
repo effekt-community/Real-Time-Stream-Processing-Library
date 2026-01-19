@@ -1,0 +1,128 @@
+module src/lib/event_logger
+
+import src/lib/event
+import src/lib/csv
+import src/lib/anomaly_logger // only for the csv saving function (in internal namespace)
+import io/error
+
+
+/// An AnomalyDetection handler that logs all events to the console
+def logToConsole() {body: () => Unit / emit[Event]}: Unit = {
+  try {
+    body()
+  } with emit[Event] { e =>
+    println("Event: " ++ e.value.show() ++ " at t=" ++ e.timestamp.show())
+    resume(())
+  }
+}
+
+/// An AnomalyDetection handler that logs all events to the console and rethrows the events to the caller
+def logToConsoleRethrow() {body: () => Unit / emit[Event]}: Unit / emit[Event] = {
+  try {
+    body()
+  } with emit[Event] { e =>
+    println("Event: " ++ e.value.show() ++ " at t=" ++ e.timestamp.show())
+    do emit(e)
+    resume(())
+  }
+}
+
+/// An AnomalyDetection handler that logs all events to a CSV file
+def logToFileCsv(filePath: String) {body: () => Unit / emit[Event]}: Unit / Exception[IOError] = {
+  var buffer: List[CsvRow] = [["timestamp", "value"]]
+  var first = true
+  val maxBufferSize = 1000
+  try {
+    body()
+  } with emit[Event] { e =>
+    val row: CsvRow = [
+      e.timestamp.show(),
+      e.value.show()
+    ]
+    buffer = Cons(row, buffer)
+    if (buffer.size >= maxBufferSize) {
+      // Flush buffer to file
+      internal::saveCsvRows(buffer.reverse, filePath, first)
+      buffer = []
+      first = false
+    }
+    resume(())
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
+/// An AnomalyDetection handler that logs all events to a CSV file
+def logToFileCsvRethrow(filePath: String) {body: () => Unit / emit[Event]}: Unit / { emit[Event], Exception[IOError] } = {
+  var buffer: List[CsvRow] = [["timestamp", "value"]]
+  var first = true
+  val maxBufferSize = 1000
+  try {
+    body()
+  } with emit[Event] { e =>
+    val row: CsvRow = [
+      e.timestamp.show(),
+      e.value.show()
+    ]
+    buffer = Cons(row, buffer)
+    if (buffer.size >= maxBufferSize) {
+      // Flush buffer to file
+      internal::saveCsvRows(buffer.reverse, filePath, first)
+      buffer = []
+      first = false
+    }
+    do emit(e)
+    resume(())
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
+
+namespace examples {
+  def example1(): Unit = {
+    with on[MissingValue].panic()
+    with logToConsole()
+    var lst: List[Event] = [
+      Event(1, 1.0),
+      Event(2, 3.0),
+      Event(3, 6.0),
+      Event(4, 0.5),
+      Event(5, 4.0),
+      Event(6, -1.0),
+      Event(7, 3.0)
+    ]
+    foreach (lst) { e =>
+      do emit(e)
+    }
+  }
+
+  /// Note: This will create (or overwrite) a file "anomalies_example_log.csv" in the current working directory
+  def example2(): Unit = {
+    with on[MissingValue].panic()
+    with on[IOError].panic()
+    with logToFileCsv("anomalies_example_log.csv")
+    with logToConsoleRethrow()
+    var lst: List[Event] = [
+      Event(1, 1.0),
+      Event(2, 3.0),
+      Event(3, 6.0),
+      Event(4, 0.5),
+      Event(5, 4.0),
+      Event(6, -1.0),
+      Event(7, 3.0)
+    ]
+    foreach (lst) { e =>
+      do emit(e)
+    }
+  }
+}
+
+def main(): Unit = {
+  examples::example2()
+  ()
+}
