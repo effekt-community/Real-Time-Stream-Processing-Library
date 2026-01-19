@@ -14,6 +14,7 @@ module csv
 import scanner
 import stream
 import string
+import partial
 
 
 /*
@@ -95,7 +96,7 @@ def unbuild(v: CsvValue): Unit / CsvBuilder = v match {
 }
 
 def readUntil { shouldStop: Char => Bool }: String / Scan[Char] = 
-  collectString { readWhile[Char] { c => not(shouldStop(c)) } }
+  collectString { readMany[Char] { c => not(shouldStop(c)) } }
 
 /// Read and unescape a string in ""
 /// Stolen from 'json'
@@ -240,6 +241,7 @@ def getColumnOf[R](columnName: String) { csv: => R / CsvBuilder }: R / {emit[Str
 
 def main() = {
   with on[WrongFormat].report
+  with crash("Age was not a number!")
 
   val csv: CsvValue = [["name", "age"], ["John", "42"], ["Joe", "10"], ["Jolene", "27"]]
   val csvAgain = build {
