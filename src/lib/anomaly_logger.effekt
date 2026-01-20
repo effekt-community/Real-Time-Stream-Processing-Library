@@ -125,6 +125,55 @@ def logToFileCsv(filePath: String) {body: () => Unit / AnomalyDetection}: Unit /
   }
 }
 
+/// An AnomalyDetection handler that logs all events to a CSV file and rethrows them to the caller
+def logToFileCsvRethrow(filePath: String) {body: () => Unit / AnomalyDetection}: Unit / { AnomalyDetection, Exception[IOError] } = {
+  var buffer: List[CsvRow] = [["timestamp", "value", "isAnomaly", "anomalyScore"]]
+  var first = true
+  val maxBufferSize = 1000
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      val row: CsvRow = [
+        ae.event.timestamp.show(),
+        ae.event.value.show(),
+        "true",
+        ae.anomalyScore.show()
+      ]
+      buffer = Cons(row, buffer)
+      if (buffer.size >= maxBufferSize) {
+        // Flush buffer to file
+        internal::saveCsvRows(buffer.reverse, filePath, first)
+        buffer = []
+        first = false
+      }
+      do anomaly(ae)
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      val row: CsvRow = [
+        ae.event.timestamp.show(),
+        ae.event.value.show(),
+        "false",
+        ae.anomalyScore.show()
+      ]
+      buffer = Cons(row, buffer)
+      if (buffer.size >= maxBufferSize) {
+        // Flush buffer to file
+        internal::saveCsvRows(buffer.reverse, filePath, first)
+        buffer = []
+        first = false
+      }
+      do noAnomaly(ae)
+      resume(())
+    }
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
 /// An AnomalyDetection handler that logs only anomalies to a CSV file
 def logAnomaliesToFileCsv(filePath: String) {body: () => Unit / AnomalyDetection}: Unit / Exception[IOError] = {
   var buffer: List[CsvRow] = [["timestamp", "value", "isAnomaly", "anomalyScore"]]
@@ -150,6 +199,42 @@ def logAnomaliesToFileCsv(filePath: String) {body: () => Unit / AnomalyDetection
       resume(())
     }
     def noAnomaly(ae: AnomalyEvaluation) = {
+      resume(())
+    }
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
+/// An AnomalyDetection handler that logs only anomalies to a CSV file and rethrows them to the caller
+def logAnomaliesToFileCsv(filePath: String) {body: () => Unit / AnomalyDetection}: Unit / { AnomalyDetection, Exception[IOError] } = {
+  var buffer: List[CsvRow] = [["timestamp", "value", "isAnomaly", "anomalyScore"]]
+  var first = true
+  val maxBufferSize = 1000
+  try {
+    body()
+  } with AnomalyDetection {
+    def anomaly(ae: AnomalyEvaluation) = {
+      val row: CsvRow = [
+        ae.event.timestamp.show(),
+        ae.event.value.show(),
+        "true",
+        ae.anomalyScore.show()
+      ]
+      buffer = Cons(row, buffer)
+      if (buffer.size >= maxBufferSize) {
+        // Flush buffer to file
+        internal::saveCsvRows(buffer.reverse, filePath, first)
+        buffer = []
+        first = false
+      }
+      do anomaly(ae)
+      resume(())
+    }
+    def noAnomaly(ae: AnomalyEvaluation) = {
+      do noAnomaly(ae)
       resume(())
     }
   }
