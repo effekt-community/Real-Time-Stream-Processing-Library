@@ -1,0 +1,94 @@
+module src/lib/resource_utilization_input
+
+import src/lib/event
+import src/lib/timestamp
+import io/time
+
+/*
+* FFI to get cpu usage from node js backend
+* Only works with node js backend
+*/
+
+/// Get the current CPU usage as a percentage (0.0 to 1.0)
+/// This function samples CPU times, waits a short interval internally (50ms),
+/// and returns the usage fraction for that interval. The wait is non-blocking.
+/// 
+/// This function only works on the jsNode backend.
+extern def getCpuUsage() at async: Double =
+  jsNode """$effekt.capture(k => {
+      const os = require('os');
+      function sample() {
+        const cpus = os.cpus();
+        let totalIdle = 0;
+        let totalTick = 0;
+        cpus.forEach(cpu => {
+          for (const type in cpu.times) {
+            totalTick += cpu.times[type];
+          }
+          totalIdle += cpu.times.idle;
+        });
+        return { totalIdle, totalTick };
+      }
+
+      const s1 = sample();
+      const interval = 50; // milliseconds; smaller = more noise, larger = smoother
+
+      setTimeout(() => {
+        const s2 = sample();
+        const idleDiff = s2.totalIdle - s1.totalIdle;
+        const totalDiff = s2.totalTick - s1.totalTick;
+        let usage = 0;
+        if (totalDiff > 0) {
+          usage = 1 - (idleDiff / totalDiff);
+          if (usage < 0) usage = 0;
+          if (usage > 1) usage = 1;
+        }
+        k(usage);
+      }, interval);
+    })"""
+
+/// Infinite pull stream that yields CPU usage events
+def cpuUsagePullStream() { body: () => Unit / { read[Event] } }: Unit = {
+  try body() with read[Event] {
+    resume {
+      val cpuUsage = getCpuUsage()
+      val timestamp = currentTimestampMillis()
+      cpuUsage.toEvent(timestamp)
+    }
+  }
+}
+
+/// Pull stream that yields at most `limit` CPU usage events
+def cpuUsagePullStream(limit: Int) { body: () => Unit / { read[Event] } }: Unit = {
+  var count = 0
+  try body() with read[Event] {
+    resume {
+      if (count >= limit) {
+        do stop()
+      } else {
+        count = count + 1
+      }
+      val cpuUsage = getCpuUsage()
+      val timestamp = currentTimestampMillis()
+      cpuUsage.toEvent(timestamp)
+    }
+  }
+}
+
+namespace examples {
+  def example1(): Unit = {
+    with boundary
+    var i = 0
+    cpuUsagePullStream() {
+      while (i < 10) {
+        println("CPU Usage Event received: " ++ do read[Event]().show())
+        i = i + 1
+        time::sleep(500)
+      }
+    }
+  }
+
+  def main() = {
+    example1()
+  }
+}
