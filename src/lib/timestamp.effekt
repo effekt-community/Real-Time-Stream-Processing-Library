@@ -1,0 +1,9 @@
+module src/lib/timestamp
+
+/// FFI to get the current timestamp in milliseconds
+extern def currentTimestampMillis() at io: Int =
+  js "Date.now()"
+
+/// FFI to convert a timestamp in milliseconds to an ISO string
+extern def timeMillisToString(ts: Int) at io: String =
+  js "new Date(${ts}).toISOString()"

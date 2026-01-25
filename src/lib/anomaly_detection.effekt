@@ -14,6 +14,12 @@ record AnomalyEvaluation (
   anomalyScore: Double
 )
 
+def show(a: AnomalyEvaluation): String = {
+  "event=" ++ a.event.show() ++
+  ", isAnomaly=" ++ a.isAnomaly.show() ++
+  ", anomalyScore=" ++ a.anomalyScore.show()
+}
+
 /// Check equality of two AnomalyEvaluation records
 ///
 /// Performs a field-by-field equality check (timestamp, value, anomaly flag, score)
@@ -122,17 +128,16 @@ namespace examples {
       } else {
         val first = lst.head()
         lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.value.show())
+        println("Providing value: " ++ first.show())
         resume { unbox first }
       }
     } with AnomalyDetection { 
       def anomaly(ev: AnomalyEvaluation) = {
-        println("Anomaly detected: " ++ ev.event.value.show() ++ " at t=" ++ ev.event.timestamp.show() ++
-                " (score: " ++ ev.anomalyScore.show() ++ ")")
+        println("Anomaly detected: " ++ ev.show())
         resume(())
       }
       def noAnomaly(ev: AnomalyEvaluation) = {
-        println("No anomaly: " ++ ev.event.value.show() ++ " at t=" ++ ev.event.timestamp.show())
+        println("No anomaly: " ++ ev.show())
         resume(())
       }
     }
@@ -158,16 +163,16 @@ namespace examples {
       } else {
         val first = lst.head()
         lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.value.show())
+        println("Providing value: " ++ first.show())
         resume { unbox first }
       }
     } with AnomalyDetection { 
       def anomaly(ev: AnomalyEvaluation) = {
-        println("Anomaly detected: " ++ ev.event.value.show() ++ " at t=" ++ ev.event.timestamp.show() ++ " (score: " ++ ev.anomalyScore.show() ++ ")")
+        println("Anomaly detected: " ++ ev.show())
         resume(())
       }
       def noAnomaly(ev: AnomalyEvaluation) = {
-        println("No anomaly: " ++ ev.event.value.show() ++ " at t=" ++ ev.event.timestamp.show() ++ " (score: " ++ ev.anomalyScore.show() ++ ")")
+        println("No anomaly: " ++ ev.show())
         resume(())
       }
     }

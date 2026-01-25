@@ -10,23 +10,34 @@ import process
 import io/filesystem
 
 /// The content of the test_events.csv as a list of doubles for comparison
-def csvContentAsList(): List[Double] = {
-  [10.0, 27.0, 5.5, 42.0, 14.5, 29.0, 20.0]
+def csvContentAsList(): List[Event] = {
+  var currentTimestamp = 0
+  [10.0, 27.0, 5.5, 42.0, 14.5, 29.0, 20.0].map { s => currentTimestamp = currentTimestamp + 1; s.toEvent(currentTimestamp) }
 }
 
 def testSuite() = suite("stream_input_csv") {
   test("reads csv events push") {
     with assertDoNotRaise[WrongFormat]
     with assertDoNotRaise[IOError]
-    assertEmits[Double](csvContentAsList()) { (a: Double, b: Double) => a == b } {
+    assertEmits[Event](csvContentAsList()) { (a: Event, b: Event) => a.event::equalsIgnoreTimestamp(b) } {
       stream_input::csvFeed("src/test/testdata.csv", "value", 0)
     }
+  }
+
+  test("reads csv events with timestamp push") {
+    with assertDoNotRaise[WrongFormat]
+    with assertDoNotRaise[IOError]
+    assertTrue(partial::succeeds { 
+      assertEmits[Event](csvContentAsList()) { (a: Event, b: Event) => a.event::equals(b) } {
+        stream_input::csvFeed("src/test/testdata_with_timestamp.csv", "value", "timestamp", 0)
+      }
+    })
   }
 
   test("raises IOError on missing file") {
     with assertDoRaise[IOError]
     with assertDoNotRaise[WrongFormat]
-    assertEmits[Double]([]) { (a: Double, b: Double) => a == b } {
+    assertEmits[Event]([]) { (a: Event, b: Event) => a.event::equalsIgnoreTimestamp(b) } {
       stream_input::csvFeed("missing_file.csv", "value", 0)
     }
   }
@@ -57,7 +68,8 @@ def testSuite() = suite("stream_input_csv") {
     normalDistributedPull(mu, sigma) {
       while (samplesRead < numSamples) {
         try {
-          val v = do read[Double]()
+          val e = do read[Event]()
+          val v = e.value
           // Check that the value is within a reasonable range (e.g., within 5 standard deviations)
           if (not(v >= mu - 5.0 * sigma && v <= mu + 5.0 * sigma))
             samplesOutliers = samplesOutliers + 1
@@ -88,7 +100,8 @@ def testSuite() = suite("stream_input_csv") {
     exponentialDistributedPull(lambda) {
       while (samplesRead < numSamples) {
         try {
-          val v = do read[Double]()
+          val e = do read[Event]()
+          val v = e.value
 
           assertTrue(v >= 0.0, "Exponential distributed value should be non-negative")
           if (v > 10.0 / lambda)
@@ -118,7 +131,8 @@ def testSuite() = suite("stream_input_csv") {
     uniformDistributedPull(a, b) {
       while (samplesRead < numSamples) {
         try {
-          val v = do read[Double]()
+          val e = do read[Event]()
+          val v = e.value
 
           if (v < a || v > b)
             samplesOutliers = samplesOutliers + 1

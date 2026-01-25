@@ -1,0 +1,20 @@
+module src/lib/typeconversion
+
+/// Parse string to double
+/// 
+/// Returns NaN if the string cannot be parsed to a valid double.
+extern def toDoubleUnsafe(s: String) at {}: Double =
+  js "parseFloat(${s})"
+
+/// Check if a double is NaN
+extern def isNaN(d: Double) at {}: Bool =
+  js "Number.isNaN(${d})"
+
+/// Parse string to double, raising WrongFormat exception if parsing fails
+def toDouble(s: String) at {}: Double / Exception[WrongFormat] =
+  val d = toDoubleUnsafe(s)
+  if (isNaN(d)) {
+    do raise(WrongFormat(), "Cannot convert string '" ++ s ++ "' to Double")
+  } else {
+    d
+  }
