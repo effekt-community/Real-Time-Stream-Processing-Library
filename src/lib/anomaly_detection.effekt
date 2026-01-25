@@ -43,16 +43,15 @@ interface AnomalyDetection {
 /// is the distance outside of the range. Otherwise it is considered normal and receives a score of `0.0`.
 ///
 /// O(1) space complexity, O(1) time complexity per read
-def minMaxAnomalyDetector(min: Double, max: Double): Unit / { read[Event], AnomalyDetection } = {
-  with boundary
-  while (true) {
-    val ev = do read[Event]()
+def minMaxAnomalyDetector(min: Double, max: Double) { body: () => Unit / { emit[Event] } }: Unit / { AnomalyDetection } = {
+  try body() with emit[Event] { ev =>
     val value = ev.value
     if (value < min || value > max) {
       do anomaly(AnomalyEvaluation(ev, true, if (value < min) min - value else value - max))
     } else {
       do noAnomaly(AnomalyEvaluation(ev, false, 0.0))
     }
+    resume(())
   }
 }
 
@@ -64,11 +63,9 @@ def minMaxAnomalyDetector(min: Double, max: Double): Unit / { read[Event], Anoma
 /// and can be positive or negative depending on whether the value is above or below the mean.
 ///
 /// O(1) space complexity, O(1) time complexity per read
-def meanThresholdAnomalyDetector(threshold: Double): Unit / { read[Event], AnomalyDetection } = {
-  with boundary
+def meanThresholdAnomalyDetector(threshold: Double) { body: () => Unit / { emit[Event] } }: Unit / { AnomalyDetection } = {
   var count = counter::empty()
-  while (true) {
-    val ev = do read[Event]()
+  try body() with emit[Event] { ev =>
     val value = ev.value
     count = count.add(value)
     val deviation = value - count.mean()
@@ -77,6 +74,7 @@ def meanThresholdAnomalyDetector(threshold: Double): Unit / { read[Event], Anoma
     } else {
       do noAnomaly(AnomalyEvaluation(ev, false, deviation))
     }
+    resume(())
   }
 }
 
@@ -88,11 +86,9 @@ def meanThresholdAnomalyDetector(threshold: Double): Unit / { read[Event], Anoma
 /// `anomalyScore` is the computed z-score and can be positive or negative.
 ///
 /// O(1) space complexity, O(1) time complexity per read
-def zScoreAnomalyDetector(zThreshold: Double): Unit / { read[Event], AnomalyDetection } = {
-  with boundary
+def zScoreAnomalyDetector(zThreshold: Double) { body: () => Unit / { emit[Event] } }: Unit / { AnomalyDetection } = {
   var count = counter::empty()
-  while (true) {
-    val ev = do read[Event]()
+  try body() with emit[Event] { ev =>
     val value = ev.value
     count = count.add(value)
     val mean = count.mean()
@@ -103,6 +99,7 @@ def zScoreAnomalyDetector(zThreshold: Double): Unit / { read[Event], AnomalyDete
     } else {
       do noAnomaly(AnomalyEvaluation(ev, false, zScore))
     }
+    resume(())
   }
 }
 
@@ -110,26 +107,15 @@ def zScoreAnomalyDetector(zThreshold: Double): Unit / { read[Event], AnomalyDete
 namespace examples {
   def example1(): Unit = {
     with on[MissingValue].panic()
-    var lst: List[Event] = [
-      Event(1, 1.0),
-      Event(2, 3.0),
-      Event(3, 6.0),
-      Event(4, 0.5),
-      Event(5, 4.0),
-      Event(6, -1.0),
-      Event(7, 3.0)
-    ]
     try {
-      minMaxAnomalyDetector(0.0, 5.0)
-    } with read[Event] { () =>
-      if (lst.isEmpty()) {
-        println("No more values to read, stopping...")
-        resume { do stop() }
-      } else {
-        val first = lst.head()
-        lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.show())
-        resume { unbox first }
+      minMaxAnomalyDetector(0.0, 5.0) {
+        do emit(Event(1, 1.0))
+        do emit(Event(2, 3.0))
+        do emit(Event(3, 6.0))
+        do emit(Event(4, 0.5))
+        do emit(Event(5, 4.0))
+        do emit(Event(6, -1.0))
+        do emit(Event(7, 3.0))
       }
     } with AnomalyDetection { 
       def anomaly(ev: AnomalyEvaluation) = {
@@ -145,26 +131,15 @@ namespace examples {
 
   def example2(): Unit = {
     with on[MissingValue].panic()
-    var lst: List[Event] = [
-      Event(1, 1.0),
-      Event(2, 3.0),
-      Event(3, 6.0),
-      Event(4, 0.5),
-      Event(5, 4.0),
-      Event(6, -1.0),
-      Event(7, 3.0)
-    ]
     try {
-      zScoreAnomalyDetector(1.0)
-    } with read[Event] { () =>
-      if (lst.isEmpty()) {
-        println("No more values to read, stopping...")
-        resume { do stop() }
-      } else {
-        val first = lst.head()
-        lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.show())
-        resume { unbox first }
+      zScoreAnomalyDetector(1.0) {
+        do emit(Event(1, 1.0))
+        do emit(Event(2, 3.0))
+        do emit(Event(3, 6.0))
+        do emit(Event(4, 0.5))
+        do emit(Event(5, 4.0))
+        do emit(Event(6, -1.0))
+        do emit(Event(7, 3.0))
       }
     } with AnomalyDetection { 
       def anomaly(ev: AnomalyEvaluation) = {
@@ -176,5 +151,9 @@ namespace examples {
         resume(())
       }
     }
+  }
+
+  def main() = {
+    example1()
   }
 }
