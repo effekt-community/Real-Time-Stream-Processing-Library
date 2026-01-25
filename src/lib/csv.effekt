@@ -15,6 +15,7 @@ import scanner
 import stream
 import string
 import partial
+import map
 
 
 /*
@@ -46,6 +47,16 @@ def collectString{ body: => Unit / { emit[Char] } }: String = {
   var str = ""
   chars.foreach { c => str = str ++ c.show() }
   str
+}
+
+def contains[T](lst: List[T], v: T) {comp: (T, T) => Bool}: Bool = {
+  var found = false
+  lst.foreach { x =>
+    if (comp(x, v)) {
+      found = true
+    }
+  }
+  return found
 }
 
 /*
@@ -232,6 +243,43 @@ def getColumnOf[R](columnName: String) { csv: => R / CsvBuilder }: R / {emit[Str
       // it's the first iteration and we haven't found a column yet!
       if (columnId is None()) {
         wrongFormat("Header doesn't have the given column name: " ++ columnName)
+      }
+      ret
+    }
+  }
+}
+
+/// Not in PR, added by myself
+/// 
+/// Get multiple columns by their names
+def getColumnsOf[R](columnNames: List[String]) { csv: => R / CsvBuilder }: R / {emit[Map[String, String]], Exception[WrongFormat]} = {
+  with on[MissingValue].panic() // should never happen
+  val compFuncString = box {(x: String, y: String) => if (x < y) Less() else if (x > y) Greater() else Equal()}
+  val compFuncInt = box {(x: Int, y: Int) => if (x < y) Less() else if (x > y) Greater() else Equal()}
+  var columnIdsMap = empty[Int, String](compFuncInt)
+  try csv() with CsvBuilder {
+    def rows[R]() = resume { {r} =>
+      var currentColumn = 0
+      var resultMap: Map[String, String] = empty[String, String](compFuncString)
+      val ret = try r() with RowBuilder {
+        def cell(s) = {
+          currentColumn = currentColumn + 1
+          if (not(columnIdsMap.contains(currentColumn)) and columnNames.contains(s.trim()) {(x, y) => x == y}) {
+            columnIdsMap = columnIdsMap.put(currentColumn, s.trim())
+          } else if (columnIdsMap.contains(currentColumn)) {
+            val colName = columnIdsMap.get(currentColumn).value()
+            resultMap = map::put(resultMap, colName, s.trim())
+          }
+          resume(())
+        }
+      }
+      if (not(resultMap.isEmpty())) {
+        do emit(resultMap)
+      }
+
+      // it's the first iteration and we haven't found a column yet!
+      if (columnIdsMap.size() < columnNames.size()) {
+        wrongFormat("Header doesn't have the given column name: " ++ columnNames.show())
       }
       ret
     }

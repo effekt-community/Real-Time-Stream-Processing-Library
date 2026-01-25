@@ -1,6 +1,41 @@
 module src/lib/event
 
+import src/lib/timestamp
+import src/lib/typeconversion
+
 record Event (
   timestamp: Int,
   value: Double
 )
+
+def toEvent(value: Double): Event = {
+  Event(currentTimestampMillis(), value)
+}
+
+def toEvent(value: Double, timestamp: Int): Event = {
+  Event(timestamp, value)
+}
+
+def toEvent(value: Int): Event = {
+  Event(currentTimestampMillis(), value.toDouble)
+}
+
+def toEvent(value: Int, timestamp: Int): Event = {
+  Event(timestamp, value.toDouble)
+}
+
+def toEvent(value: String): Event / Exception[WrongFormat] = {
+  Event(currentTimestampMillis(), value.toDouble)
+}
+
+def show(e: Event): String = {
+  "Event(value=" ++ e.value.show() ++ ", timestamp=" ++ timeMillisToString(e.timestamp) ++ ")"
+}
+
+def equals(a: Event, b: Event): Bool = {
+  a.timestamp == b.timestamp && a.value == b.value
+}
+
+def equalsIgnoreTimestamp(a: Event, b: Event): Bool = {
+  a.value == b.value
+}
