@@ -31,21 +31,12 @@ def sameEvaluation(a: AnomalyEvaluation, b: AnomalyEvaluation): Bool = {
 	approx(a.anomalyScore, b.anomalyScore)
 }
 
-def assertAnomalyDetection(inputs: List[Event], expected: List[AnomalyEvaluation]) { program: () => Unit / { read[Event], AnomalyDetection } } : Unit / { Assertion } = {
-	var remainingInputs = inputs
+def assertAnomalyDetection(expected: List[AnomalyEvaluation]) { program: () => Unit / { AnomalyDetection } } : Unit / { Assertion } = {
 	var remainingExpected = expected
 
 	try {
 		program()
-	} with read[Event] { () =>
-		remainingInputs match {
-			case Nil() =>
-				resume { do stop() }
-			case Cons(head, tail) =>
-				remainingInputs = tail
-				resume { unbox head }
-		}
-	} with AnomalyDetection {
+	}  with AnomalyDetection {
 		def anomaly(ev: AnomalyEvaluation) = {
 			remainingExpected match {
 				case Nil() =>
@@ -68,7 +59,6 @@ def assertAnomalyDetection(inputs: List[Event], expected: List[AnomalyEvaluation
 		}
 	}
 
-	assertTrue(remainingInputs.isEmpty(), "Did not read all inputs")
 	assertTrue(remainingExpected.isEmpty(), "Did not receive all expected detection events")
 }
 
@@ -83,8 +73,12 @@ def testSuite() = suite("anomaly_detection") {
 			AnomalyEvaluation(Event(4, 3.0), false, 0.0)
 		]
 
-		assertAnomalyDetection(input, expected) {
-			anomaly_detection::minMaxAnomalyDetector(0.0, 4.0)
+		assertAnomalyDetection(expected) {
+			anomaly_detection::minMaxAnomalyDetector(0.0, 4.0) {
+        input.foreach { e =>
+          do emit(e)
+        }
+      }
 		}
 	}
 
@@ -97,8 +91,12 @@ def testSuite() = suite("anomaly_detection") {
 			AnomalyEvaluation(Event(3, 2.0), false, -0.5)
 		]
 
-		assertAnomalyDetection(input, expected) {
-			anomaly_detection::meanThresholdAnomalyDetector(1.5)
+		assertAnomalyDetection(expected) {
+			anomaly_detection::meanThresholdAnomalyDetector(1.5) {
+        input.foreach { e =>
+          do emit(e)
+        }
+      }
 		}
 	}
 
@@ -111,8 +109,12 @@ def testSuite() = suite("anomaly_detection") {
 			AnomalyEvaluation(Event(3, 1.0), false, -0.5)
 		]
 
-		assertAnomalyDetection(input, expected) {
-			anomaly_detection::zScoreAnomalyDetector(1.0)
+		assertAnomalyDetection(expected) {
+			anomaly_detection::zScoreAnomalyDetector(1.0) {
+        input.foreach { e =>
+          do emit(e)
+        }
+      }
 		}
 	}
 }
