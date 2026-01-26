@@ -27,6 +27,20 @@ def logToConsoleRethrow() {body: () => Unit / emit[Event]}: Unit / emit[Event] =
   }
 }
 
+/// An AnomalyDetection handler that logs all events to the console for pull-based streams
+def logToConsolePull() {body: () => Unit / read[Event]}: Unit / read[Event] = {
+  with boundary
+  try {
+    body()
+  } with read[Event] {
+    val e = do read[Event]()
+    resume {
+      println("Event: " ++ e.value.show() ++ " at t=" ++ e.timestamp.show())
+      e
+    }
+  }
+}
+
 /// An AnomalyDetection handler that logs all events to a CSV file
 def logToFileCsv(filePath: String) {body: () => Unit / emit[Event]}: Unit / Exception[IOError] = {
   var buffer: List[CsvRow] = [["timestamp", "value"]]
@@ -75,6 +89,39 @@ def logToFileCsvRethrow(filePath: String) {body: () => Unit / emit[Event]}: Unit
     }
     do emit(e)
     resume(())
+  }
+  // Flush remaining buffer to file
+  if (not(buffer.isEmpty())) {
+    internal::saveCsvRows(buffer.reverse, filePath, first)
+  }
+}
+
+def logToFileCsvPull(filePath: String) {body: () => Unit / read[Event]}: Unit / { read[Event], Exception[IOError] } = {
+    var buffer: List[CsvRow] = [["timestamp", "value"]]
+    var first = true
+    val maxBufferSize = 1000
+  try { // Double try is required because the read in the with block throws stop when the stream ends
+    try {
+      body()
+    } with read[Event] {
+      val e = do read[Event]()
+      resume {
+        val row: CsvRow = [
+          e.timestamp.show(),
+          e.value.show()
+        ]
+        buffer = Cons(row, buffer)
+        if (buffer.size >= maxBufferSize) {
+          // Flush buffer to file
+          internal::saveCsvRows(buffer.reverse, filePath, first)
+          buffer = []
+          first = false
+        }
+        e
+      }
+    }
+  } with stop {
+    ()
   }
   // Flush remaining buffer to file
   if (not(buffer.isEmpty())) {

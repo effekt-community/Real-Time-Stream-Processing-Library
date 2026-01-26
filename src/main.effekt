@@ -1,8 +1,8 @@
 module main // must be named same as the file!
 
-import src/lib/aggregation
+import src/examples
 
 
 def main(): Unit = {
-  examples::example2()
+  examples::exponentialDistributionWithZScoreAnomalyDetectionExample()
 }

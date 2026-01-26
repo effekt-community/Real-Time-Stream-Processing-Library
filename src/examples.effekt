@@ -1,0 +1,38 @@
+module src/examples
+
+import src/lib/cpu_utilization_input
+import src/lib/anomaly_detection
+import src/lib/anomaly_logger
+import src/lib/stream_input
+import src/lib/event_logger
+import src/lib/aggregation
+import src/lib/event
+import io/error
+import io/time
+
+def cpuUsageAnomalyDetectionExample(): Unit = {
+  with on[IOError].panic()
+  with boundary()
+  with anomaly_logger::logToConsole();
+  with anomaly_logger::logToFileCsvRethrow("cpu_anomalies.csv");
+  with minMaxAnomalyDetector(0.0, 0.25);
+  with event_logger::logToFileCsvRethrow("cpu_usage_aggregated.csv"); // Just for convenience, information is already in cpu_anomalies.csv
+  
+  with cpuUsagePullStream(100);
+  with event_logger::logToFileCsvPull("cpu_usage_raw.csv");
+  with pullStreamDelayer(100);
+  aggregateMeanWindow(10);
+}
+
+/// Example using exponential distribution based anomaly detection on an exponential distributed data stream
+def exponentialDistributionWithZScoreAnomalyDetectionExample(): Unit = {
+  with on[IOError].panic()
+  with boundary()
+  with anomaly_logger::logAnomaliesToConsole();
+  with zScoreAnomalyDetector(0.90);
+  
+  with stream_input::exponentialDistributedPull(1.0);
+  with pullStreamDelayer(50);
+  with pullStreamLimiter(100);
+  aggregateMean();
+}

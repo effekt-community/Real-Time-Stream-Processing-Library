@@ -16,6 +16,31 @@ def pushToPullStream[T]() {pushStr: () => Unit / { emit[T] } } {pullStr: () => U
   stream::source[T] { pushStr() } { pullStr() }
 }
 
+def pullStreamDelayer(delayMs: Int) {body: () => Unit / { read[Event] } }: Unit / { read[Event] } = {
+  try body() with read[Event] {
+    resume {
+      val e = do read[Event]()
+      time::sleep(delayMs)
+      e
+    }
+  }
+}
+
+def pullStreamLimiter(maxEvents: Int) {body: () => Unit / { read[Event] } }: Unit / { read[Event] } = {
+  var count = 0
+  try body() with read[Event] {
+    if (count >= maxEvents) {
+      resume { do stop() }
+    } else {
+      resume {
+        count = count + 1
+        val e = do read[Event]()
+        e
+      }
+    }
+  }
+}
+
 def csvFeed(path: String, columnNameValue: String, delayMs: Int): Unit / { emit[Event], Exception[IOError], Exception[WrongFormat] } = {
   readFileUTF8(path) {
     returning::scanner[Char, Unit] {
