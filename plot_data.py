@@ -10,12 +10,12 @@ import argparse
 
 def convert_timestamp(timestamp_ms):
     """Converts Unix timestamp in milliseconds to a readable datetime format"""
-    timestamp_sec = timestamp_ms // 1000
+    timestamp_sec = timestamp_ms / 1000
     dt = datetime.fromtimestamp(timestamp_sec)
     return dt
 
 
-def plot_raw_data(csv_file, value_name='Value'):
+def plot_raw_data(csv_file, value_name='Value', out_file=None):
     """Plots raw data values"""
     
     print(f"Loading raw data from {csv_file}...")
@@ -40,10 +40,14 @@ def plot_raw_data(csv_file, value_name='Value'):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
-    plt.show()
+    if out_file:
+        plt.savefig(out_file)
+        print(f"Plot saved to {out_file}")
+    else:
+        plt.show()
 
 
-def plot_anomalies(csv_file, value_name='Value', show_anomaly_values=False):
+def plot_anomalies(csv_file, value_name='Value', show_anomaly_values=False, out_file=None):
     """Plots data with marked anomalies and background shading"""
     
     print(f"Loading anomaly data from {csv_file}...")
@@ -123,7 +127,11 @@ def plot_anomalies(csv_file, value_name='Value', show_anomaly_values=False):
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
-    plt.show()
+    if out_file:
+        plt.savefig(out_file)
+        print(f"Plot saved to {out_file}")
+    else:
+        plt.show()
 
 
 def main():
@@ -150,6 +158,8 @@ Examples:
                        help='Name of the values being plotted (e.g., CPU Usage, Memory, Temperature)')
     parser.add_argument('--show-anomaly-values', action='store_true',
                        help='Show anomaly scores on a secondary y-axis')
+    parser.add_argument('--out', type=str, metavar='FILE',
+                       help='Output file to save the plot')
     
     args = parser.parse_args()
     
@@ -162,10 +172,10 @@ Examples:
     
     # Plot data
     if args.raw:
-        plot_raw_data(args.raw, args.value_name)
+        plot_raw_data(args.raw, args.value_name, args.out)
     
     if args.anomalies:
-        plot_anomalies(args.anomalies, args.value_name, args.show_anomaly_values)
+        plot_anomalies(args.anomalies, args.value_name, args.show_anomaly_values, args.out)
 
 
 if __name__ == "__main__":
