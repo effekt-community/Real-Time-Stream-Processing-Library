@@ -258,17 +258,9 @@ namespace examples {
       Event(6, -1.0),
       Event(7, 3.0)
     ]
-    try {
-      minMaxAnomalyDetector(0.0, 5.0)
-    } with read[Event] { () =>
-      if (lst.isEmpty()) {
-        println("No more values to read, stopping...")
-        resume { do stop() }
-      } else {
-        val first = lst.head()
-        lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.value.show())
-        resume { unbox first }
+    minMaxAnomalyDetector(0.0, 5.0) {
+      lst.foreach { e =>
+        do emit(e)
       }
     }
   }
@@ -285,17 +277,9 @@ namespace examples {
       Event(6, -1.0),
       Event(7, 3.0)
     ]
-    try {
-      zScoreAnomalyDetector(1.0)
-    } with read[Event] { () =>
-      if (lst.isEmpty()) {
-        println("No more values to read, stopping...")
-        resume { do stop() }
-      } else {
-        val first = lst.head()
-        lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.value.show())
-        resume { unbox first }
+    zScoreAnomalyDetector(1.0) {
+      lst.foreach { e =>
+        do emit(e)
       }
     }
   }
@@ -315,25 +299,17 @@ namespace examples {
       Event(6, -1.0),
       Event(7, 3.0)
     ]
-    try {
-      zScoreAnomalyDetector(1.0)
-    } with read[Event] { () =>
-      if (lst.isEmpty()) {
-        println("No more values to read, stopping...")
-        resume { do stop() }
-      } else {
-        val first = lst.head()
-        lst = lst.deleteAt(0)
-        println("Providing value: " ++ first.value.show())
-        resume { unbox first }
+    zScoreAnomalyDetector(1.0) {
+      lst.foreach { e =>
+        do emit(e)
       }
     }
   }
-}
 
-def main(): Unit = {
-  examples::example3()
-  ()
+  def main(): Unit = {
+    examples::example3()
+    ()
+  }
 }
 
 namespace internal {
