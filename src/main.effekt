@@ -4,5 +4,5 @@ import src/examples
 
 
 def main(): Unit = {
-  examples::exponentialDistributionWithZScoreAnomalyDetectionExample()
+  examples::cpuUsageAnomalyDetectionExample()
 }

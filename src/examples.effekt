@@ -15,7 +15,7 @@ def cpuUsageAnomalyDetectionExample(): Unit = {
   with boundary()
   with anomaly_logger::logToConsole();
   with anomaly_logger::logToFileCsvRethrow("cpu_anomalies.csv");
-  with minMaxAnomalyDetector(0.0, 0.25);
+  with minMaxAnomalyDetector(0.0, 0.90);
   with event_logger::logToFileCsvRethrow("cpu_usage_aggregated.csv"); // Just for convenience, information is already in cpu_anomalies.csv
   
   with cpuUsagePullStream(100);

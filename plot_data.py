@@ -36,8 +36,6 @@ def plot_raw_data(csv_file, value_name='Value', out_file=None):
     plt.grid(True, alpha=0.3)
     plt.legend()
     
-    # Rotate x-axis labels by 45 degrees for better readability
-    plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
     if out_file:
@@ -123,8 +121,6 @@ def plot_anomalies(csv_file, value_name='Value', show_anomaly_values=False, out_
     if not show_anomaly_values:
         ax.legend()
     
-    # Rotate x-axis by 45 degrees
-    plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
     if out_file:

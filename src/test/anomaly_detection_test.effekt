@@ -6,16 +6,6 @@ import src/lib/event
 import src/test/lib
 import process
 
-def eventsFromList(values: List[Double]): List[Event] = {
-	def loop(vals: List[Double], ts: Int): List[Event] = {
-		vals match {
-			case Nil() => Nil()
-			case Cons(h, t) => Cons(Event(ts, h), loop(t, ts + 1))
-		}
-	}
-	loop(values, 0)
-}
-
 def approx(a: Double, b: Double): Bool = {
 	abs(a - b) <= 0.000001
 }

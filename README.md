@@ -17,6 +17,7 @@ This library provides tools for aggregating sensor data over time windows, detec
 - [Architecture Overview](#architecture-overview)
 - [Running Tests](#running-tests)
 - [Project Structure](#project-structure)
+- [Plotting Results](#plotting-results)
 - [Implementation Status](#implementation-status)
 
 ---
@@ -41,25 +42,25 @@ This library provides tools for aggregating sensor data over time windows, detec
 ### Option 1: Using Effekt directly
 
 1. Clone this repository:
-   ```sh
-   git clone <repo-url>
-   cd Real-Time-Stream-Processing-Library
-   ```
+  ```sh
+  git clone <repo-url>
+  cd Real-Time-Stream-Processing-Library
+  ```
 
 2. Make sure Effekt is installed at version `0.59.0` and available in your PATH. You can verify with:
-   ```sh
-   effekt --version
-   ```
+  ```sh
+  effekt --version
+  ```
 
 3. Run the main file:
-   ```sh
-   effekt src/main.effekt
-   ```
+  ```sh
+  effekt src/main.effekt
+  ```
 
 4. Run the tests:
-   ```sh
-   effekt src/test.effekt
-   ```
+  ```sh
+  effekt src/test.effekt
+  ```
 
 ### Option 2: Using Nix
 
@@ -264,7 +265,6 @@ Tests use the `test` module from Effekt's standard library and return exit code 
 │   ├── main.effekt           # Main entry point
 │   ├── test.effekt           # Test runner
 │   ├── examples.effekt       # Usage examples
-│   ├── lib.effekt            # Library re-exports
 │   ├── lib/                  # Library modules
 │   │   ├── aggregation.effekt
 │   │   ├── anomaly_detection.effekt
@@ -284,15 +284,49 @@ Tests use the `test` module from Effekt's standard library and return exit code 
 │       ├── lib.effekt
 │       ├── testdata.csv
 │       └── testdata_with_timestamp.csv
-├── flake.nix                 # Nix flake configuration
-├── flake.lock                # Nix lockfile
-├── PROJECT_SPEC.md           # Project specification
-├── ARCHITECTURE.md           # Developer/architecture documentation
+├── plot_data.py               # Visualization script for results
+├── flake.nix                  # Nix flake configuration
+├── flake.lock                 # Nix lockfile
+├── PROJECT_SPEC.md            # Project specification
+├── ARCHITECTURE.md            # Developer/architecture documentation
 ├── LICENSE
 └── README.md
 ```
 
 ---
+
+## Plotting Results
+
+The `plot_data.py` script provides visualization tools for analyzing output from the stream processing library. It generates plots from CSV files produced by the logging handlers.
+
+### Usage
+
+```sh
+python plot_data.py --raw <csv_file> --value-name "<Name>" [--out <output.png>]
+python plot_data.py --anomalies <csv_file> --value-name "<Name>" [--show-anomaly-values] [--out <output.png>]
+```
+
+### Features
+
+- **Raw Data Plotting**: Visualize time-series data with timestamps converted from Unix milliseconds
+- **Anomaly Visualization**: Plot data with anomalies highlighted in red, including both point markers and background shading for anomaly regions
+- **Anomaly Scores**: Optional secondary y-axis displaying anomaly scores for detailed analysis
+- **Export**: Save plots to PNG files or display interactively
+
+### Examples
+
+```sh
+# Plot raw CPU usage data
+python plot_data.py --raw cpu_usage_raw.csv --value-name "CPU Usage" --out raw_plot.png
+
+# Plot with anomalies and scores
+python plot_data.py --anomalies cpu_anomalies.csv --value-name "CPU Usage" --show-anomaly-values --out anomaly_plot.png
+```
+
+### Requirements
+
+- `pandas`: Data loading and processing
+- `matplotlib`: Plotting and visualization
 
 ## Implementation Status
 

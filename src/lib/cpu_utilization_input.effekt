@@ -1,4 +1,4 @@
-module src/lib/resource_utilization_input
+module src/lib/cpu_utilization_input
 
 import src/lib/event
 import src/lib/timestamp
