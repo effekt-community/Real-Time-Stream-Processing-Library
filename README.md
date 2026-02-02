@@ -43,11 +43,11 @@ This library provides tools for aggregating sensor data over time windows, detec
 
 1. Clone this repository:
   ```sh
-  git clone <repo-url>
+  git clone https://github.com/patr1ck-m/Real-Time-Stream-Processing-Library.git
   cd Real-Time-Stream-Processing-Library
   ```
 
-2. Make sure Effekt is installed at version `0.59.0` and available in your PATH. You can verify with:
+2. Make sure Effekt is installed at version `0.60.0` and available in your PATH. You can verify with:
   ```sh
   effekt --version
   ```
@@ -265,7 +265,7 @@ Tests use the `test` module from Effekt's standard library and return exit code 
 │   ├── main.effekt           # Main entry point
 │   ├── test.effekt           # Test runner
 │   ├── examples.effekt       # Usage examples
-│   ├── lib/                  # Library modules
+│   ├── lib/                  # Implementation of this library
 │   │   ├── aggregation.effekt
 │   │   ├── anomaly_detection.effekt
 │   │   ├── anomaly_logger.effekt
