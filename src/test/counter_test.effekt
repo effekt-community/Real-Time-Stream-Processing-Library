@@ -1,0 +1,170 @@
+module src/test/counter_test
+
+import test
+import src/lib/counter
+import process
+
+def approx(a: Double, b: Double): Bool = {
+  abs(a - b) <= 0.000001
+}
+
+def testSuite() = suite("counter") {
+  // ==================
+  // Empty Counter Tests
+  // ==================
+  
+  test("empty counter has zero count") {
+    val c = counter::empty()
+    assertTrue(c.count == 0, "Empty counter should have count 0")
+  }
+
+  test("empty counter mean is zero") {
+    val c = counter::empty()
+    assertTrue(approx(c.mean(), 0.0), "Empty counter mean should be 0.0")
+  }
+
+  test("empty counter variance is zero") {
+    val c = counter::empty()
+    assertTrue(approx(c.variance(), 0.0), "Empty counter variance should be 0.0")
+  }
+
+  test("empty counter stddev is zero") {
+    val c = counter::empty()
+    assertTrue(approx(c.stddev(), 0.0), "Empty counter stddev should be 0.0")
+  }
+
+  // ==================
+  // Single Value Tests
+  // ==================
+
+  test("single value mean equals the value") {
+    val c = counter::empty().add(5.0)
+    assertTrue(approx(c.mean(), 5.0), "Mean of single value 5.0 should be 5.0")
+  }
+
+  test("single value variance is zero") {
+    val c = counter::empty().add(5.0)
+    assertTrue(approx(c.variance(), 0.0), "Variance of single value should be 0.0")
+  }
+
+  test("single value stddev is zero") {
+    val c = counter::empty().add(5.0)
+    assertTrue(approx(c.stddev(), 0.0), "Stddev of single value should be 0.0")
+  }
+
+  test("single value count is one") {
+    val c = counter::empty().add(42.0)
+    assertTrue(c.count == 1, "Count after adding one value should be 1")
+  }
+
+  // ==================
+  // Multiple Values Tests
+  // ==================
+
+  test("mean of two values") {
+    val c = counter::empty().add(2.0).add(4.0)
+    assertTrue(approx(c.mean(), 3.0), "Mean of [2.0, 4.0] should be 3.0")
+  }
+
+  test("mean of multiple values") {
+    val c = counter::empty().add(1.0).add(2.0).add(3.0).add(4.0).add(5.0)
+    assertTrue(approx(c.mean(), 3.0), "Mean of [1,2,3,4,5] should be 3.0")
+  }
+
+  test("variance of two identical values is zero") {
+    val c = counter::empty().add(5.0).add(5.0)
+    assertTrue(approx(c.variance(), 0.0), "Variance of identical values should be 0.0")
+  }
+
+  test("variance calculation is correct") {
+    // Values: [2, 4, 4, 4, 5, 5, 7, 9]
+    // Mean = 5, Variance (sample) = 4.571428...
+    val c = counter::empty()
+      .add(2.0).add(4.0).add(4.0).add(4.0)
+      .add(5.0).add(5.0).add(7.0).add(9.0)
+    val expectedVariance = 4.571428571428571
+    assertTrue(approx(c.variance(), expectedVariance), 
+      "Variance calculation incorrect. Expected " ++ expectedVariance.show() ++ " got " ++ c.variance().show())
+  }
+
+  test("stddev is square root of variance") {
+    val c = counter::empty()
+      .add(2.0).add(4.0).add(4.0).add(4.0)
+      .add(5.0).add(5.0).add(7.0).add(9.0)
+    val expectedStddev = sqrt(c.variance())
+    assertTrue(approx(c.stddev(), expectedStddev), "Stddev should be sqrt of variance")
+  }
+
+  test("count increments correctly") {
+    var c = counter::empty()
+    c = c.add(1.0)
+    assertTrue(c.count == 1, "Count should be 1")
+    c = c.add(2.0)
+    assertTrue(c.count == 2, "Count should be 2")
+    c = c.add(3.0)
+    assertTrue(c.count == 3, "Count should be 3")
+  }
+
+  // ==================
+  // Remove Operation Tests
+  // ==================
+
+  test("remove decrements count") {
+    val c = counter::empty().add(1.0).add(2.0).add(3.0).remove(2.0)
+    assertTrue(c.count == 2, "Count after add(3).remove(1) should be 2")
+  }
+
+  test("remove updates sum correctly") {
+    val c = counter::empty().add(1.0).add(2.0).add(3.0).remove(2.0)
+    // Sum should be 1 + 3 = 4, mean = 4/2 = 2
+    assertTrue(approx(c.mean(), 2.0), "Mean after removing 2.0 from [1,2,3] should be 2.0")
+  }
+
+  test("add then remove same value returns to previous state") {
+    val c1 = counter::empty().add(1.0).add(2.0)
+    val c2 = c1.add(5.0).remove(5.0)
+    assertTrue(approx(c1.mean(), c2.mean()), "Adding and removing same value should preserve mean")
+    assertTrue(c1.count == c2.count, "Adding and removing same value should preserve count")
+  }
+
+  test("remove all values results in empty counter behavior") {
+    val c = counter::empty().add(5.0).remove(5.0)
+    assertTrue(c.count == 0, "Count should be 0 after removing all values")
+    assertTrue(approx(c.mean(), 0.0), "Mean should be 0.0 for empty counter")
+  }
+
+  // ==================
+  // Edge Cases
+  // ==================
+
+  test("handles negative values") {
+    val c = counter::empty().add(-5.0).add(-3.0).add(-1.0)
+    assertTrue(approx(c.mean(), -3.0), "Mean of [-5, -3, -1] should be -3.0")
+  }
+
+  test("handles mix of positive and negative values") {
+    val c = counter::empty().add(-2.0).add(0.0).add(2.0)
+    assertTrue(approx(c.mean(), 0.0), "Mean of [-2, 0, 2] should be 0.0")
+  }
+
+  test("handles zero values") {
+    val c = counter::empty().add(0.0).add(0.0).add(0.0)
+    assertTrue(approx(c.mean(), 0.0), "Mean of zeros should be 0.0")
+    assertTrue(approx(c.variance(), 0.0), "Variance of zeros should be 0.0")
+  }
+
+  test("handles very small values") {
+    val c = counter::empty().add(0.0000001).add(0.0000002).add(0.0000003)
+    assertTrue(approx(c.mean(), 0.0000002), "Mean of very small values should be correct")
+  }
+
+  test("handles large values") {
+    val c = counter::empty().add(1000000.0).add(2000000.0).add(3000000.0)
+    assertTrue(approx(c.mean(), 2000000.0), "Mean of large values should be correct")
+  }
+}
+
+def main() = {
+  process::exit(if (testSuite()) 0 else 1)
+  ()
+}
