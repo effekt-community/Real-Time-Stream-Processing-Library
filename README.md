@@ -280,8 +280,9 @@ Tests use the `test` module from Effekt's standard library and return exit code 
 │   └── test/                 # Test modules and data
 │       ├── aggregation_test.effekt
 │       ├── anomaly_detection_test.effekt
-│       ├── stream_input_test.effekt
+│       ├── counter_test.effekt
 │       ├── lib.effekt
+│       ├── stream_input_test.effekt
 │       ├── testdata.csv
 │       └── testdata_with_timestamp.csv
 ├── plot_data.py               # Visualization script for results
