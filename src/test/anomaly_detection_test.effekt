@@ -107,6 +107,104 @@ def testSuite() = suite("anomaly_detection") {
       }
 		}
 	}
+
+	// ==================
+	// Edge Case Tests
+	// ==================
+
+	test("min-max detector single value in range") {
+		val input = eventsFromList([2.5])
+		val expected = [
+			AnomalyEvaluation(Event(0, 2.5), false, 0.0)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::minMaxAnomalyDetector(0.0, 5.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
+
+	test("min-max detector single value out of range") {
+		val input = eventsFromList([10.0])
+		val expected = [
+			AnomalyEvaluation(Event(0, 10.0), true, 5.0)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::minMaxAnomalyDetector(0.0, 5.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
+
+	test("min-max detector value exactly at boundary is not anomaly") {
+		val input = eventsFromList([0.0, 5.0])
+		val expected = [
+			AnomalyEvaluation(Event(0, 0.0), false, 0.0),
+			AnomalyEvaluation(Event(1, 5.0), false, 0.0)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::minMaxAnomalyDetector(0.0, 5.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
+
+	test("min-max detector with negative range") {
+		val input = eventsFromList([-3.0, -7.0, 0.0])
+		val expected = [
+			AnomalyEvaluation(Event(0, -3.0), false, 0.0),
+			AnomalyEvaluation(Event(1, -7.0), true, 2.0),
+			AnomalyEvaluation(Event(2, 0.0), true, 1.0)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::minMaxAnomalyDetector(-5.0, -1.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
+
+	test("z-score detector with identical values has zero stddev") {
+		val input = eventsFromList([5.0, 5.0, 5.0])
+		// When stddev is 0, z-score should be 0 (no anomaly)
+		val expected = [
+			AnomalyEvaluation(Event(0, 5.0), false, 0.0),
+			AnomalyEvaluation(Event(1, 5.0), false, 0.0),
+			AnomalyEvaluation(Event(2, 5.0), false, 0.0)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::zScoreAnomalyDetector(1.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
+
+	test("mean threshold with single value") {
+		val input = eventsFromList([5.0])
+		// First value: mean = 5.0, deviation = 0.0
+		val expected = [
+			AnomalyEvaluation(Event(0, 5.0), false, 0.0)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::meanThresholdAnomalyDetector(1.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
+
+	test("mean threshold with zero threshold flags all deviations") {
+		val input = eventsFromList([1.0, 2.0])
+		// First: mean=1, dev=0 (not anomaly)
+		// Second: mean=1.5, dev=0.5 (anomaly since threshold=0)
+		val expected = [
+			AnomalyEvaluation(Event(0, 1.0), false, 0.0),
+			AnomalyEvaluation(Event(1, 2.0), true, 0.5)
+		]
+		assertAnomalyDetection(expected) {
+			anomaly_detection::meanThresholdAnomalyDetector(0.0) {
+				input.foreach { e => do emit(e) }
+			}
+		}
+	}
 }
 
 def main() = {

@@ -5,12 +5,14 @@ import test
 import src/test/aggregation_test
 import src/test/anomaly_detection_test
 import src/test/stream_input_test
+import src/test/counter_test
 
 def main() = {
   val testResults = [
     aggregation_test::testSuite(),
     anomaly_detection_test::testSuite(),
-    stream_input_test::testSuite()
+    stream_input_test::testSuite(),
+    counter_test::testSuite()
   ]
   val allPassed = testResults.all { res => res }
   val exitCode = if (allPassed) 0 else 1

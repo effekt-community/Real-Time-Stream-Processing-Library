@@ -90,6 +90,121 @@ def testSuite() = suite("aggregation") {
       }
     }
   }
+
+  // ==================
+  // Edge Case Tests
+  // ==================
+
+  test("aggregate single element using min") {
+    val input = eventsFromList([42.0])
+    val expectedOutput = eventsFromList([42.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMin()
+      }
+    }
+  }
+
+  test("aggregate single element using max") {
+    val input = eventsFromList([42.0])
+    val expectedOutput = eventsFromList([42.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMax()
+      }
+    }
+  }
+
+  test("aggregate single element using mean") {
+    val input = eventsFromList([42.0])
+    val expectedOutput = eventsFromList([42.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMean()
+      }
+    }
+  }
+
+  test("aggregate single element using median") {
+    val input = eventsFromList([42.0])
+    val expectedOutput = eventsFromList([42.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMedian()
+      }
+    }
+  }
+
+  test("aggregate with negative values using min") {
+    val input = eventsFromList([-5.0, -3.0, -8.0, -1.0])
+    val expectedOutput = eventsFromList([-5.0, -5.0, -8.0, -8.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMin()
+      }
+    }
+  }
+
+  test("aggregate with negative values using max") {
+    val input = eventsFromList([-5.0, -3.0, -8.0, -1.0])
+    val expectedOutput = eventsFromList([-5.0, -3.0, -3.0, -1.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMax()
+      }
+    }
+  }
+
+  test("aggregate with negative values using mean") {
+    val input = eventsFromList([-5.0, -3.0, -7.0, -1.0])
+        val expectedOutput = eventsFromList([-5.0, -4.0, -5.0, -4.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMean()
+      }
+    }
+  }
+
+  test("aggregate with negative values using median") {
+    val input = eventsFromList([-5.0, -3.0, -8.0, -1.0])
+    val expectedOutput = eventsFromList([-5.0, -4.0, -5.0, -4.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMedian()
+      }
+    }
+  }
+
+  test("windowed min with window size 1") {
+    val input = eventsFromList([3.0, 1.0, 4.0, 1.0, 5.0])
+    val expectedOutput = eventsFromList([3.0, 1.0, 4.0, 1.0, 5.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMinWindow(1)
+      }
+    }
+  }
+
+  test("windowed max with window size 1") {
+    val input = eventsFromList([3.0, 1.0, 4.0, 1.0, 5.0])
+    val expectedOutput = eventsFromList([3.0, 1.0, 4.0, 1.0, 5.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMaxWindow(1)
+      }
+    }
+  }
+
+  test("windowed mean with window larger than input") {
+    val input = eventsFromList([2.0, 4.0, 6.0])
+    // Window size 10, but only 3 elements, so it computes mean of all available
+    val expectedOutput = eventsFromList([2.0, 3.0, 4.0])
+    assertEmits[Event]( expectedOutput ) { (a, b) => sameEvent(a, b) } {
+      assertReads[Event](input) { (a, b) => sameEvent(a, b) } {
+        aggregation::aggregateMeanWindow(10)
+      }
+    }
+  }
 }
 
 def main() = {
