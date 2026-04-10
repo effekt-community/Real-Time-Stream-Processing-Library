@@ -28,10 +28,6 @@ def toEvent(value: String): Event / Exception[WrongFormat] = {
   Event(currentTimestampMillis(), value.toDouble)
 }
 
-def show(e: Event): String = {
-  "Event(value=" ++ e.value.show() ++ ", timestamp=" ++ timeMillisToString(e.timestamp) ++ ")"
-}
-
 def equals(a: Event, b: Event): Bool = {
   a.timestamp == b.timestamp && a.value == b.value
 }

@@ -98,15 +98,15 @@ def buildRow[R] { body: => R / RowBuilder }: (R, CsvRow) = {
 
 def unbuild(v: CsvValue): Unit / CsvBuilder = v match {
   case rows => rows.foreach { row =>
-    do rows { 
+    do rows {
       row.foreach { cell =>
-        do cell(cell) 
+        do cell(cell)
       }
     }
   }
 }
 
-def readUntil { shouldStop: Char => Bool }: String / Scan[Char] = 
+def readUntil { shouldStop: Char => Bool }: String / Scan[Char] =
   collectString { readMany[Char] { c => not(shouldStop(c)) } }
 
 /// Read and unescape a string in ""
@@ -114,9 +114,9 @@ def readUntil { shouldStop: Char => Bool }: String / Scan[Char] =
 def readQuotedString(): Unit / { Scan[Char], emit[Char], Exception[WrongFormat] } = {
   try {
     expect("Expected \"") { readIf('"') }
-    while(read[Char]() is c and c != '"') {
+    while(do read[Char]() is c and c != '"') {
       c match {
-        case '\\' => read[Char]() match {
+        case '\\' => do read[Char]() match {
           case '"' => do emit('\"')
           case '\\' => do emit('\\')
           case '/' => do emit('/')
@@ -140,9 +140,9 @@ def decodeRow(): Unit / {Scan[Char], RowBuilder, Exception[WrongFormat]} = loop 
   do cell(cell)
 
   do peek[Char]() match {
-    case ','  => do skip[Char]()
+    case ','  => skip[Char]()
     case '\n' =>
-      do skip[Char]()
+      skip[Char]()
       do stop()
     case '"'  =>
       do cell(collectString { readQuotedString() })
@@ -153,10 +153,10 @@ def decodeRow(): Unit / {Scan[Char], RowBuilder, Exception[WrongFormat]} = loop 
 
 def decodeCsv(): Unit / {Scan[Char], CsvBuilder, Exception[WrongFormat]} = loop {
   do peek[Char]() match {
-    case '\n' => 
+    case '\n' =>
       // do skip[Char]()
       do rows { decodeRow() } // technically could be `do rows { () }`
-    case _ => 
+    case _ =>
       do rows { decodeRow() }
   }
   // QUESTION TODO: Why doesn't just this work instead of the match, huh?!
@@ -171,7 +171,7 @@ def encodeCsv[R] { csv: => R / CsvBuilder }: R / emit[String] = {
   }
 
   try csv() with CsvBuilder {
-    def rows[R]() = resume { {row} => 
+    def rows[R]() = resume { {row} =>
       sep(); encodeRow {row}
     }
   }
@@ -185,7 +185,7 @@ def encodeRow[R] { row: => R / RowBuilder }: R / emit[String] = {
   }
 
   try row() with RowBuilder { // TODO: quoting?!
-    def cell(s) = { sep(); do emit(s); resume(()) } 
+    def cell(s) = { sep(); do emit(s); resume(()) }
   }
 }
 
@@ -250,7 +250,7 @@ def getColumnOf[R](columnName: String) { csv: => R / CsvBuilder }: R / {emit[Str
 }
 
 /// Not in PR, added by myself
-/// 
+///
 /// Get multiple columns by their names
 def getColumnsOf[R](columnNames: List[String]) { csv: => R / CsvBuilder }: R / {emit[Map[String, String]], Exception[WrongFormat]} = {
   with on[MissingValue].panic() // should never happen
