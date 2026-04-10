@@ -1,3 +1,9 @@
+> [!NOTE]
+> This is a community-maintained fork of a MIT-licensed student project in the *Effective Programming with Effects* course in winter semester 2025/2026.
+> Be warned that this is not an officially endorsed project, the code in this repository may be not idiomatic Effekt.
+> 
+> The original repository is https://github.com/patr1ck-m/Real-Time-Stream-Processing-Library
+
 # Real-Time Stream Processing Library
 
 A modular, effect-driven library for processing real-time data streams, built with [Effekt](https://effekt-lang.org/).
