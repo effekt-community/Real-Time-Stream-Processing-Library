@@ -68,7 +68,7 @@ def testSuite() = suite("stream_input_csv") {
     normalDistributedPull(mu, sigma) {
       while (samplesRead < numSamples) {
         try {
-          val e = do read[Event]()
+          val e = do next[Event]()
           val v = e.value
           // Check that the value is within a reasonable range (e.g., within 5 standard deviations)
           if (not(v >= mu - 5.0 * sigma && v <= mu + 5.0 * sigma))
@@ -100,7 +100,7 @@ def testSuite() = suite("stream_input_csv") {
     exponentialDistributedPull(lambda) {
       while (samplesRead < numSamples) {
         try {
-          val e = do read[Event]()
+          val e = do next[Event]()
           val v = e.value
 
           assertTrue(v >= 0.0, "Exponential distributed value should be non-negative")
@@ -131,7 +131,7 @@ def testSuite() = suite("stream_input_csv") {
     uniformDistributedPull(a, b) {
       while (samplesRead < numSamples) {
         try {
-          val e = do read[Event]()
+          val e = do next[Event]()
           val v = e.value
 
           if (v < a || v > b)

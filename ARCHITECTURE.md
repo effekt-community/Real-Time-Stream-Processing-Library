@@ -30,7 +30,7 @@ The entire library is built around Effekt's effect system. Instead of calling fu
 
 The main effects used are:
 
-- **`read[Event]`**: Pull-based stream input. When a component needs the next event, it performs `do read[Event]()`. A handler somewhere up the call stack provides the actual value.
+- **`next[Event]`**: Pull-based stream input. When a component needs the next event, it performs `do next[Event]()`. A handler somewhere up the call stack provides the actual value.
 - **`emit[Event]`**: Push-based stream output. Components emit results using `do emit(event)`. Handlers decide what to do with each value.
 - **`AnomalyDetection`**: Interface with `anomaly()` and `noAnomaly()` operations. Anomaly detectors call these, and handlers decide how to react (log, alert, store, etc.).
 - **`stop`**: Used to signal the end of the stream.
@@ -60,13 +60,13 @@ For example, all anomaly loggers handle the `AnomalyDetection` effect the same w
 
 Switching from console to file logging is just changing one line. The rest of the pipeline stays exactly the same.
 
-Similarly for the rest of the library - whether you use `csvFeedPull()`, `normalDistributedPull()`, or `cpuUsagePullStream()`, they all provide events via `read[Event]`, so any aggregator works with any input source and any anomaly detector works with any aggregator.
+Similarly for the rest of the library - whether you use `csvFeedPull()`, `normalDistributedPull()`, or `cpuUsagePullStream()`, they all provide events via `next[Event]`, so any aggregator works with any input source and any anomaly detector works with any aggregator.
 
 ### Stream Model
 
 The library uses two stream models:
 
-1. **Pull streams**: The consumer requests data by performing `read[Event]`. The handler decides where the data comes from. This is lazy—no work happens until someone reads.
+1. **Pull streams**: The consumer requests data by performing `next[Event]`. The handler decides where the data comes from. This is lazy—no work happens until someone reads.
 
 2. **Push streams**: The producer emits data by performing `emit[Event]`. The handler decides what to do with each value.
 
@@ -139,10 +139,10 @@ The library uses minimal FFI:
 To add your own detection strategy, write a function that reads events and calls the `AnomalyDetection` effect:
 
 ```js
-def myCustomDetector(param: Double): Unit / { read[Event], AnomalyDetection } = {
+def myCustomDetector(param: Double): Unit / { next[Event], AnomalyDetection } = {
   with boundary
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     // your detection logic here
     if (isAnomalous) {
       do anomaly(AnomalyEvaluation(ev, true, score))
@@ -155,11 +155,11 @@ def myCustomDetector(param: Double): Unit / { read[Event], AnomalyDetection } = 
 
 ### Writing a Custom Input Source
 
-Implement a handler for `read[Event]`:
+Implement a handler for `next[Event]`:
 
 ```js
-def myDataSource() { body: () => Unit / read[Event] }: Unit = {
-  try body() with read[Event] {
+def myDataSource() { body: () => Unit / next[Event] }: Unit = {
+  try body() with next[Event] {
     val nextEvent = // fetch from somewhere
     resume { nextEvent }
   }

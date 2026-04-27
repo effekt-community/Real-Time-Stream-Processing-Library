@@ -119,7 +119,7 @@ You can run the examples by calling the function in `src/main.effekt` and then e
 
 ### Data Input Sources
 
-The library provides various input sources that handle `read[Event]`. All input handlers share the same interface, so they can be swapped without changing the rest of the pipeline.
+The library provides various input sources that handle `next[Event]`. All input handlers share the same interface, so they can be swapped without changing the rest of the pipeline.
 
 #### CSV Input (`src/lib/stream_input`)
 
@@ -159,7 +159,7 @@ Usage examples are provided in the `examples` namespace within each component fi
 
 ### Aggregation Functions
 
-All aggregators read events via `read[Event]` and emit aggregated results via `emit[Event]`.
+All aggregators read events via `next[Event]` and emit aggregated results via `emit[Event]`.
 
 | Function | Description | Space | Time per event |
 |----------|-------------|-------|----------------|
@@ -175,7 +175,7 @@ All aggregators read events via `read[Event]` and emit aggregated results via `e
 
 ### Anomaly Detection
 
-The library provides three anomaly detection strategies (`src/lib/anomaly_detection`). Each detector reads events via `read[Event]` and calls the `AnomalyDetection` interface (`anomaly()` or `noAnomaly()`).
+The library provides three anomaly detection strategies (`src/lib/anomaly_detection`). Each detector reads events via `next[Event]` and calls the `AnomalyDetection` interface (`anomaly()` or `noAnomaly()`).
 
 | Detector | Description |
 |----------|-------------|
@@ -193,7 +193,7 @@ The library provides handlers to log events or anomaly evaluations. "Rethrow" va
 
 #### Event Logging (`src/lib/event_logger`)
 
-Handles `emit[Event]` (push) or `read[Event]` (pull) effects.
+Handles `emit[Event]` (push) or `next[Event]` (pull) effects.
 
 | Handler | Description |
 |---------|-------------|
@@ -225,7 +225,7 @@ Usage examples are provided in the `examples` namespace within each logger file.
 
 ## Architecture Overview
 
-The library is built around Effekt's effect system. Components communicate through effects (`read[Event]`, `emit[Event]`, `AnomalyDetection`) that get handled by outer handlers. This design enables:
+The library is built around Effekt's effect system. Components communicate through effects (`next[Event]`, `emit[Event]`, `AnomalyDetection`) that get handled by outer handlers. This design enables:
 
 - **Composability**: Stack handlers to build pipelines
 - **Exchangeability**: Swap any handler for another without changing the rest of the pipeline

@@ -29,7 +29,7 @@ def assertNoEmits[T] { program: () => Unit / emit[T] } : Unit / { Assertion } = 
   }
 }
 
-def assertReads[T](inputs: List[T]) { equals: (T, T) => Bool } { program: () => Unit / read[T] } : Unit / { Assertion } = {
+def assertReads[T](inputs: List[T]) { equals: (T, T) => Bool } { program: () => Unit / next[T] } : Unit / { Assertion } = {
   with on[MissingValue].panic()
   var lst = inputs
   assertFalse(lst.isEmpty(), "assertReads requires a non empty list of inputs")
@@ -37,7 +37,7 @@ def assertReads[T](inputs: List[T]) { equals: (T, T) => Bool } { program: () => 
   var isStop: Bool = false
   try {
     program()
-  } with read[T] { () =>
+  } with next[T] { () =>
     lst match {
       case Nil() =>
         if (isStop) {
