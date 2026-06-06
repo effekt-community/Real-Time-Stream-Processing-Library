@@ -11,19 +11,11 @@
         "sbt-derivation": "sbt-derivation"
       },
       "locked": {
-<<<<<<< HEAD
-        "lastModified": 1777279692,
-        "narHash": "sha256-8jGwicX2foCJsJr2HiJEpewz4+Wv9YnOaZvsnkQWvic=",
-        "owner": "jiribenes",
-        "repo": "effekt-nix",
-        "rev": "8eb4c3eab118389e3532efe8ec9b74de4f3243b8",
-=======
         "lastModified": 1779116722,
         "narHash": "sha256-F6tiXWuWOT+s5j04j4W+x8x541ZzjjUm7HxEHTQu0Qw=",
         "owner": "jiribenes",
         "repo": "effekt-nix",
         "rev": "60af21b260a87f58da8674240084ed0fb85a4b45",
->>>>>>> 4aa9b7ff671d2146e75701118fe9eb5cdf7ae1b0
         "type": "github"
       },
       "original": {
