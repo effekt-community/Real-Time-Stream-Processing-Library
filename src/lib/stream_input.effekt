@@ -43,7 +43,7 @@ def pullStreamLimiter(maxEvents: Int) {body: () => Unit / { next[Event] } }: Uni
 
 def csvFeed(path: String, columnNameValue: String, delayMs: Int): Unit / { emit[Event], Exception[IOError], Exception[WrongFormat] } = {
   readFileUTF8(path) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnOf(columnNameValue) {
           decodeCsv()
@@ -60,7 +60,7 @@ def csvFeed(path: String, columnNameValue: String, delayMs: Int): Unit / { emit[
 def csvFeed(path: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int): Unit / { emit[Event], Exception[IOError], Exception[WrongFormat], fail } = {
   with on[MissingValue].panic() // should never happen
   readFileUTF8(path) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnsOf([columnNameValue, columnNameTimestamp]) {
           decodeCsv()
@@ -77,7 +77,7 @@ def csvFeed(path: String, columnNameValue: String, columnNameTimestamp: String, 
 
 def csvFeedStr(csvStr: String, columnName: String, delayMs: Int): Unit / { emit[Event], Exception[WrongFormat] } = {
   feed(csvStr) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnOf(columnName) {
           decodeCsv()
@@ -94,7 +94,7 @@ def csvFeedStr(csvStr: String, columnName: String, delayMs: Int): Unit / { emit[
 def csvFeedStr(csvStr: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int): Unit / { emit[Event], Exception[WrongFormat], fail } = {
   with on[MissingValue].panic() // should never happen
   feed(csvStr) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnsOf([columnNameValue, columnNameTimestamp]) {
           decodeCsv()

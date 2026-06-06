@@ -302,7 +302,7 @@ def main() = {
   // Empty row!
   val realCsv = ",name,age\n\n,John,42\n,Joe,10\n,Jolene,27"
   val res = feed(realCsv) {
-    with returning::scanner[Char, CsvValue]
+    with returning::peeking[Char, CsvValue]
     build { decodeCsv() }.second
   }
   inspect(res)
