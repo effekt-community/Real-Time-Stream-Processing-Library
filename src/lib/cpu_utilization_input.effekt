@@ -48,8 +48,8 @@ extern def getCpuUsage() at async: Double =
     })"""
 
 /// Infinite pull stream that yields CPU usage events
-def cpuUsagePullStream() { body: () => Unit / { read[Event] } }: Unit = {
-  try body() with read[Event] {
+def cpuUsagePullStream() { body: () => Unit / { next[Event] } }: Unit = {
+  try body() with next[Event] {
     resume {
       val cpuUsage = getCpuUsage()
       val timestamp = currentTimestampMillis()
@@ -59,9 +59,9 @@ def cpuUsagePullStream() { body: () => Unit / { read[Event] } }: Unit = {
 }
 
 /// Pull stream that yields at most `limit` CPU usage events
-def cpuUsagePullStream(limit: Int) { body: () => Unit / { read[Event] } }: Unit = {
+def cpuUsagePullStream(limit: Int) { body: () => Unit / { next[Event] } }: Unit = {
   var count = 0
-  try body() with read[Event] {
+  try body() with next[Event] {
     resume {
       if (count >= limit) {
         do stop()
@@ -81,7 +81,7 @@ namespace examples {
     var i = 0
     cpuUsagePullStream() {
       while (i < 10) {
-        println("CPU Usage Event received: " ++ do read[Event]().show())
+        println("CPU Usage Event received: " ++ do next[Event]().show())
         i = i + 1
         time::sleep(500)
       }

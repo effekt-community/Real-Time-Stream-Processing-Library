@@ -12,29 +12,29 @@ import map
 
 
 /// Connect a push-based stream to a pull-based stream.
-def pushToPullStream[T]() {pushStr: () => Unit / { emit[T] } } {pullStr: () => Unit / { read[T] } } = {
+def pushToPullStream[T]() {pushStr: () => Unit / { emit[T] } } {pullStr: () => Unit / { next[T] } } = {
   stream::source[T] { pushStr() } { pullStr() }
 }
 
-def pullStreamDelayer(delayMs: Int) {body: () => Unit / { read[Event] } }: Unit / { read[Event] } = {
-  try body() with read[Event] {
+def pullStreamDelayer(delayMs: Int) {body: () => Unit / { next[Event] } }: Unit / { next[Event] } = {
+  try body() with next[Event] {
     resume {
-      val e = do read[Event]()
+      val e = do next[Event]()
       time::sleep(delayMs)
       e
     }
   }
 }
 
-def pullStreamLimiter(maxEvents: Int) {body: () => Unit / { read[Event] } }: Unit / { read[Event] } = {
+def pullStreamLimiter(maxEvents: Int) {body: () => Unit / { next[Event] } }: Unit / { next[Event] } = {
   var count = 0
-  try body() with read[Event] {
+  try body() with next[Event] {
     if (count >= maxEvents) {
       resume { do stop() }
     } else {
       resume {
         count = count + 1
-        val e = do read[Event]()
+        val e = do next[Event]()
         e
       }
     }
@@ -43,7 +43,7 @@ def pullStreamLimiter(maxEvents: Int) {body: () => Unit / { read[Event] } }: Uni
 
 def csvFeed(path: String, columnNameValue: String, delayMs: Int): Unit / { emit[Event], Exception[IOError], Exception[WrongFormat] } = {
   readFileUTF8(path) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnOf(columnNameValue) {
           decodeCsv()
@@ -60,7 +60,7 @@ def csvFeed(path: String, columnNameValue: String, delayMs: Int): Unit / { emit[
 def csvFeed(path: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int): Unit / { emit[Event], Exception[IOError], Exception[WrongFormat], fail } = {
   with on[MissingValue].panic() // should never happen
   readFileUTF8(path) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnsOf([columnNameValue, columnNameTimestamp]) {
           decodeCsv()
@@ -77,7 +77,7 @@ def csvFeed(path: String, columnNameValue: String, columnNameTimestamp: String, 
 
 def csvFeedStr(csvStr: String, columnName: String, delayMs: Int): Unit / { emit[Event], Exception[WrongFormat] } = {
   feed(csvStr) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnOf(columnName) {
           decodeCsv()
@@ -94,7 +94,7 @@ def csvFeedStr(csvStr: String, columnName: String, delayMs: Int): Unit / { emit[
 def csvFeedStr(csvStr: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int): Unit / { emit[Event], Exception[WrongFormat], fail } = {
   with on[MissingValue].panic() // should never happen
   feed(csvStr) {
-    returning::scanner[Char, Unit] {
+    returning::peeking[Char, Unit] {
       try {
         getColumnsOf([columnNameValue, columnNameTimestamp]) {
           decodeCsv()
@@ -109,36 +109,36 @@ def csvFeedStr(csvStr: String, columnNameValue: String, columnNameTimestamp: Str
   }
 }
 
-def csvFeedPull(path: String, columnNameValue: String, delayMs: Int) {body: () => Unit / { read[Event], Exception[IOError], Exception[WrongFormat] } }: Unit / { Exception[IOError], Exception[WrongFormat] } = {
+def csvFeedPull(path: String, columnNameValue: String, delayMs: Int) {body: () => Unit / { next[Event], Exception[IOError], Exception[WrongFormat] } }: Unit / { Exception[IOError], Exception[WrongFormat] } = {
   pushToPullStream[Event]() { csvFeed(path, columnNameValue, delayMs) } { body() }
 }
 
-def csvFeedPull(path: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int) {body: () => Unit / { read[Event], Exception[IOError], Exception[WrongFormat], fail } }: Unit / { Exception[IOError], Exception[WrongFormat], fail } = {
+def csvFeedPull(path: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int) {body: () => Unit / { next[Event], Exception[IOError], Exception[WrongFormat], fail } }: Unit / { Exception[IOError], Exception[WrongFormat], fail } = {
   pushToPullStream[Event]() { csvFeed(path, columnNameValue, columnNameTimestamp, delayMs) } { body() }
 }
 
-def csvFeedStrPull(csvStr: String, columnNameValue: String, delayMs: Int) {body: () => Unit / { read[Event], Exception[WrongFormat] } }: Unit / { Exception[WrongFormat] } = {
+def csvFeedStrPull(csvStr: String, columnNameValue: String, delayMs: Int) {body: () => Unit / { next[Event], Exception[WrongFormat] } }: Unit / { Exception[WrongFormat] } = {
   pushToPullStream[Event]() { csvFeedStr(csvStr, columnNameValue, delayMs) } { body() }
 }
 
-def csvFeedStrPull(csvStr: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int) {body: () => Unit / { read[Event], Exception[WrongFormat], fail } }: Unit / { Exception[WrongFormat], fail } = {
+def csvFeedStrPull(csvStr: String, columnNameValue: String, columnNameTimestamp: String, delayMs: Int) {body: () => Unit / { next[Event], Exception[WrongFormat], fail } }: Unit / { Exception[WrongFormat], fail } = {
   pushToPullStream[Event]() { csvFeedStr(csvStr, columnNameValue, columnNameTimestamp, delayMs) } { body() }
 }
 
-def normalDistributedPull(mu: Double, sigma: Double) {body: () => Unit / { read[Event] } }: Unit / { } = {
-  try body() with read[Event] {
+def normalDistributedPull(mu: Double, sigma: Double) {body: () => Unit / { next[Event] } }: Unit / { } = {
+  try body() with next[Event] {
     resume { internal::generateNormalDistributedValue(mu, sigma).toEvent() }
   }
 }
 
-def exponentialDistributedPull(lambda: Double) {body: () => Unit / { read[Event] } }: Unit / { } = {
-  try body() with read[Event] {
+def exponentialDistributedPull(lambda: Double) {body: () => Unit / { next[Event] } }: Unit / { } = {
+  try body() with next[Event] {
     resume { internal::generateExponentialDistributedValue(lambda).toEvent() }
   }
 }
 
-def uniformDistributedPull(a: Double, b: Double) {body: () => Unit / { read[Event] } }: Unit / { } = {
-  try body() with read[Event] {
+def uniformDistributedPull(a: Double, b: Double) {body: () => Unit / { next[Event] } }: Unit / { } = {
+  try body() with next[Event] {
     resume { internal::generateUniformDistributedValue(a, b).toEvent() }
   }
 }
@@ -185,7 +185,7 @@ namespace examples {
     csvFeedPull("src/test/testdata_with_timestamp.csv", "value", "timestamp", 500) { 
       while (true) {
         println("Read new value (waiting till it comes available)...")
-        val v = do read[Event]()
+        val v = do next[Event]()
         println("Received value: " ++ v.show())
       }
     }
@@ -195,7 +195,7 @@ namespace examples {
     normalDistributedPull(0.0, 1.0) {
       effekt::each(1, 11) { (n) =>
         try {
-          val v = do read[Event]()
+          val v = do next[Event]()
           println("Normal distributed value: " ++ v.show())
         } with stop {
           println("This should never be called since the stream is infinite.")

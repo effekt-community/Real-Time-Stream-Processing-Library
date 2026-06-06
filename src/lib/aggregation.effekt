@@ -17,11 +17,11 @@ extern def negInfinity: Double =
 /// Aggregate the minimum value from an unbounded stream of events
 /// 
 /// O(1) space complexity, O(1) time complexity per read
-def aggregateMin(): Unit / { read[Event], emit[Event] } = {
+def aggregateMin(): Unit / { next[Event], emit[Event] } = {
   with boundary
   var min = infinity()
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     val value = ev.value
     if (value < min) {
       min = value
@@ -33,14 +33,14 @@ def aggregateMin(): Unit / { read[Event], emit[Event] } = {
 /// Aggregate the minimum value over a sliding window of given size
 /// 
 /// O(windowSize) space complexity, O(1) time complexity on average per read
-def aggregateMinWindow(windowSize: Int) : Unit / { read[Event], emit[Event] } = {
+def aggregateMinWindow(windowSize: Int) : Unit / { next[Event], emit[Event] } = {
   with boundary
   with on[OutOfBounds].panic()
   val windowArr = array[Double](windowSize, infinity()) // Array to cycle through window values
   var min = infinity()
   var index = 0
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     val value = ev.value
     if (windowArr.get(index) == min) {
       // Recompute min
@@ -63,11 +63,11 @@ def aggregateMinWindow(windowSize: Int) : Unit / { read[Event], emit[Event] } = 
 /// Aggregate the maximum value from an unbounded stream of events
 /// 
 /// O(1) space complexity, O(1) time complexity per read
-def aggregateMax(): Unit / { read[Event], emit[Event] } = {
+def aggregateMax(): Unit / { next[Event], emit[Event] } = {
   with boundary
   var max = negInfinity()
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     val value = ev.value
     if (value > max) {
       max = value
@@ -79,14 +79,14 @@ def aggregateMax(): Unit / { read[Event], emit[Event] } = {
 /// Aggregate the maximum value over a sliding window of given size
 /// 
 /// O(windowSize) space complexity, O(1) time complexity on average per read
-def aggregateMaxWindow(windowSize: Int) : Unit / { read[Event], emit[Event] } = {
+def aggregateMaxWindow(windowSize: Int) : Unit / { next[Event], emit[Event] } = {
   with boundary
   with on[OutOfBounds].panic()
   val windowArr = array[Double](windowSize, negInfinity()) // Array to cycle through window values
   var max = negInfinity()
   var index = 0
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     val value = ev.value
     if (windowArr.get(index) == max) {
       // Recompute max -> O(windowSize)
@@ -109,11 +109,11 @@ def aggregateMaxWindow(windowSize: Int) : Unit / { read[Event], emit[Event] } = 
 /// Aggregate the mean value from an unbounded stream of events
 /// 
 /// O(1) space complexity, O(1) time complexity per read
-def aggregateMean(): Unit / { read[Event], emit[Event] } = {
+def aggregateMean(): Unit / { next[Event], emit[Event] } = {
   with boundary
   var counter: Counter = counter::empty()
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     val value = ev.value
     counter = counter.add(value)
     val meanVal = counter.mean()
@@ -124,14 +124,14 @@ def aggregateMean(): Unit / { read[Event], emit[Event] } = {
 /// Aggregate the mean value over a sliding window of given size
 /// 
 /// O(windowSize) space complexity, O(1) time complexity per read
-def aggregateMeanWindow(windowSize: Int): Unit / { read[Event], emit[Event] } = {
+def aggregateMeanWindow(windowSize: Int): Unit / { next[Event], emit[Event] } = {
   with boundary
   with on[OutOfBounds].panic()
   val windowArr = array[Double](windowSize, negInfinity()) // Array to cycle through window values
   var counter = counter::empty()
   var index = 0
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     val value = ev.value
     if (windowArr.get(index) != negInfinity()) {
       counter = counter.remove(windowArr.get(index))
@@ -146,13 +146,13 @@ def aggregateMeanWindow(windowSize: Int): Unit / { read[Event], emit[Event] } = 
 /// Aggregate the median value from an unbounded stream of events
 /// 
 /// O(n) space complexity, O(n log n) time complexity per read
-def aggregateMedian(): Unit / { read[Event], emit[Event] } = {
+def aggregateMedian(): Unit / { next[Event], emit[Event] } = {
   with boundary
   with on[OutOfBounds].panic()
   val windowList: List[Double] = empty[Double]()
   var lst = windowList
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     lst = Cons(ev.value, lst)
     val medianVal = internal::listMedian(lst)
     do emit(Event(ev.timestamp, medianVal))
@@ -162,12 +162,12 @@ def aggregateMedian(): Unit / { read[Event], emit[Event] } = {
 /// Aggregate the median value over a sliding window of given size
 /// 
 /// O(windowSize) space complexity, O(n log n) time complexity per read
-def aggregateMedianWindow(windowSize: Int): Unit / { read[Event], emit[Event] } = {
+def aggregateMedianWindow(windowSize: Int): Unit / { next[Event], emit[Event] } = {
   with boundary
   with on[OutOfBounds].panic()
   var lst: List[Double] = empty[Double]()
   while (true) {
-    val ev = do read[Event]()
+    val ev = do next[Event]()
     lst = Cons(ev.value, lst)
     if (lst.size() > windowSize) {
       lst = lst.deleteAt(lst.size() - 1) // remove oldest element
@@ -192,7 +192,7 @@ namespace examples {
     ]
     try {
       aggregateMin()
-    } with read[Event] { () =>
+    } with next[Event] { () =>
       if (lst.isEmpty()) {
         println("No more values to read, stopping...")
         resume { do stop() }
@@ -219,7 +219,7 @@ namespace examples {
     ]
     try {
       aggregateMeanWindow(2)
-    } with read[Event] { () =>
+    } with next[Event] { () =>
       if (values.isEmpty()) {
         println("No further input values; shutting down...")
         resume { do stop() }

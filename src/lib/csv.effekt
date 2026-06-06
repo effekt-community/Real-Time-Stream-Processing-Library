@@ -114,9 +114,9 @@ def readUntil { shouldStop: Char => Bool }: String / Scan[Char] =
 def readQuotedString(): Unit / { Scan[Char], emit[Char], Exception[WrongFormat] } = {
   try {
     expect("Expected \"") { readIf('"') }
-    while(do read[Char]() is c and c != '"') {
+    while(do next[Char]() is c and c != '"') {
       c match {
-        case '\\' => do read[Char]() match {
+        case '\\' => do next[Char]() match {
           case '"' => do emit('\"')
           case '\\' => do emit('\\')
           case '/' => do emit('/')
@@ -302,7 +302,7 @@ def main() = {
   // Empty row!
   val realCsv = ",name,age\n\n,John,42\n,Joe,10\n,Jolene,27"
   val res = feed(realCsv) {
-    with returning::scanner[Char, CsvValue]
+    with returning::peeking[Char, CsvValue]
     build { decodeCsv() }.second
   }
   inspect(res)
